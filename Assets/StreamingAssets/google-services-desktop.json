@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "735210052047",
+    "firebase_url": "https://raysxrlabs-web-default-rtdb.firebaseio.com",
+    "project_id": "raysxrlabs-web",
+    "storage_bucket": "raysxrlabs-web.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:735210052047:android:262746ebf3a6e64f951aba",
+        "android_client_info": {
+          "package_name": "com.Rays.RaysXRLabs"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCHoLH6WR9A6ZnGXpx8lm4ITHQ4M7q3CgY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

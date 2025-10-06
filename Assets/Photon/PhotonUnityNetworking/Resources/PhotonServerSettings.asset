@@ -1,0 +1,151 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f3758f8f58fdef43803eb9be1df0608, type: 3}
+  m_Name: PhotonServerSettings
+  m_EditorClassIdentifier: 
+  AppSettings:
+    AppIdRealtime: 1861c70a-b9a3-409e-9954-318c210a07f8
+    AppIdFusion: 
+    AppIdChat: 
+    AppIdVoice: 866bc18a-4e0a-44e9-9dba-bfa27549e10d
+    AppVersion: 1
+    UseNameServer: 1
+    FixedRegion: asia
+    Server: 
+    Port: 0
+    ProxyServer: 
+    Protocol: 0
+    EnableProtocolFallback: 1
+    AuthMode: 0
+    EnableLobbyStatistics: 0
+    NetworkLogging: 1
+  DevRegion: asia
+  PunLogging: 0
+  EnableSupportLogger: 0
+  RunInBackground: 1
+  StartInOfflineMode: 0
+  RpcList:
+  - CantHearYou
+  - ChangeColour
+  - ClickRpc
+  - DestroyRpc
+  - HeresWhy
+  - AddCollider
+  - DestroyInAll
+  - DestroyOverNetwork
+  - DestroySpaceship
+  - Draw
+  - Fire
+  - LoadModelRPC
+  - RespawnSpaceship
+  - SetLineAndMesurmentsRPC
+  - SwitchColor
+  - SelectModelRPC
+  - SelectModel
+  - OnExit
+  - AddModelNameToUI
+  - RpcOnClickToSeparate
+  - RpcOnGrab
+  - RPC_SeparateParts
+  - RPC_ReassembleSkull
+  - LoadModelFromUrl
+  - SyncModelPosition
+  - SyncTransform
+  - RPCMoveModel
+  - RPCSyncMesh
+  - RPCSynchronizeMesh
+  - RPCApplyMeshToModel
+  - AssignMeshToPrefabRPC
+  - RPCAssignMeshAndMaterials
+  - SyncMeshData
+  - ActivateLaser
+  - DeactivateLaser
+  - FireLaser
+  - GrabModelRPC
+  - ReleaseModelRPC
+  - AddModelLabelRPC
+  - SetLineAndMeasurementsRPC
+  - SyncPenWidth
+  - RPC_LoadModelFromUrl
+  - RPC_LoadImageFromUrl
+  - SyncImageData
+  - SyncPartInstance
+  - AddBoxCollider
+  - AddDeletableComponent
+  - AddPhotonTransformView
+  - SetParentToSelectedModel
+  - SetupPrefab
+  - SpawnPartNetworked
+  - ReceiveModelData
+  - RequestActiveModels
+  - ForceModelDownload
+  - RequestDirectMeshTransfer
+  - SendLineData
+  - AddDrawingPoint
+  - CreatePersistedDrawing
+  - FinishDrawing
+  - StartNewDrawing
+  - CreateNetworkedDrawing
+  - RequestMeasurementSync
+  - DeleteDrawingNetwork
+  - FinalizeDrawing
+  - AddColliderAndSync
+  - MarkDrawingDeleted
+  - SaveStroke
+  - AddPointToDrawing
+  - CreateNewDrawing
+  - UpdateDrawingWidth
+  - ReceiveMeasurementData
+  - RequestMeasurementData
+  - DeleteMeasurementPermanently
+  - DeleteMeasurementRPC
+  - ReceiveDeletionState
+  - OnModelDeleted
+  - CreateDrawing
+  - ReceiveCurrentState
+  - RequestCurrentState
+  - SyncColorIndex
+  - DestroyDrawingRPC
+  - DeleteDrawing
+  - RequestDrawingSync
+  - SyncDrawings
+  - RemoveDrawing
+  - SyncDrawingData
+  - NetworkDestroy
+  - CreateStoredStroke
+  - AddColliderAndSave
+  - SaveAndAddCollider
+  - DeleteRequestRPC
+  - DestroyStrokeRPC
+  - DeleteStrokeOverNetwork
+  - DestroyDrawing
+  - RPC_LoadVideoFromUrl
+  - RPC_PauseVideo
+  - RPC_PlayVideo
+  - RPC_SetVideoTime
+  - RPC_UpdatePlayPauseUI
+  - SyncVideoData
+  - RPC_DeleteVideo
+  - SyncDeletedVideos
+  - RPC_SyncFileList
+  - RPC_SyncPatientList
+  - RPC_SyncCategoryList
+  - ClearSelectionRPC
+  - UpdatePartName
+  - RPC_ToggleLoop
+  - SyncToggleState
+  - UpdatePresenterMode
+  - SyncGrabbedState
+  - SpawnModelRPC
+  DisableAutoOpenWizard: 1
+  ShowSettings: 1
+  DevRegionSetOnce: 1

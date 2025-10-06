@@ -1,0 +1,6 @@
+﻿2.4.3
+Changelog:
+-Fixed bugs in ZipFileExternalDataMapper and ZipFileTextureMapper that caused errors when they were not meant to be used.
+-Fixed a bug in ThreadUtils when "startImmediately" was set to false.
+-Fixed the AssetLoaderFilePicker.LoadModelFromDirectory method on Windows, Linux, Editor, and UWP platforms.
+-Various fixes to the DAE reader.
