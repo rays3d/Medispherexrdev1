@@ -5062,7 +5062,7 @@ public class ModelSample : MonoBehaviourPunCallbacks
         float maxDimension = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
         float scaleFactor = desiredModelSize / maxDimension;
 
-        if (currentModelUrl.Contains("199")) // Liver modelId
+        if (currentModelUrl.Contains("199") || currentModelUrl.Contains("253")) // Liver modelId
         {
             scaleFactor *= 0.8f; // Adjust to match combined model's liver size
         }
@@ -5090,7 +5090,7 @@ public class ModelSample : MonoBehaviourPunCallbacks
         //collider.size = mesh.bounds.size;
 
 
-        if (currentModelUrl.Contains("199"))
+        if (currentModelUrl.Contains("199") || currentModelUrl.Contains("253"))
         {
             collider.center = new Vector3(0.016418f, -0.118874f, -0.005252f);
             collider.size = new Vector3(0.320679f, 0.1315272f, 0.374281f);

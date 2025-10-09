@@ -19,7 +19,7 @@ public class LoadModelFromURL : MonoBehaviourSingleton<LoadModelFromURL>
             NetworkManager.instance.GetNetworkPlayer().LoadModelInNetwork(ModelURL);
             LoadModel();
         }*/
-        FirebaseManager.OnDataLoaded += () =>
+      //  FirebaseManager.OnDataLoaded += () =>
         {
            
         };
@@ -27,7 +27,7 @@ public class LoadModelFromURL : MonoBehaviourSingleton<LoadModelFromURL>
 
     public void OnOtherJoinRoom()
     {
-        ModelURL = FirebaseManager.Instance.modelDatabase[0].downloadURL;
+     //   ModelURL = FirebaseManager.Instance.modelDatabase[0].downloadURL;
         NetworkManager.instance.GetNetworkPlayer().LoadModelInNetwork(ModelURL);
         LoadModel();
     }

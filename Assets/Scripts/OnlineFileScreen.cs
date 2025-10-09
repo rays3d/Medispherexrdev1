@@ -10,10 +10,10 @@ public class OnlineFileScreen : MonoBehaviour
     {
         DeleteAllChild();
         gameObject.SetActive(true);
-        foreach (Data modelData in FirebaseManager.Instance.modelDatabase)
+     // foreach (Data modelData in FirebaseManager.Instance.modelDatabase)
         {
             OnlineFileButton button = Instantiate(fileButton, content);
-            button.SetData(modelData);
+        //    button.SetData(modelData);
         }
     }
 
