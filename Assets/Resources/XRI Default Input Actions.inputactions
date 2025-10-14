@@ -2633,6 +2633,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "Lock/Unlock",
+                    "type": "Button",
+                    "id": "e790a73f-7ac3-4855-ad9b-9458192e8a7f",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -2644,6 +2653,17 @@
                     "processors": "",
                     "groups": "",
                     "action": "Menu",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "0ac7f33c-0db8-4803-b838-e94e95c435e4",
+                    "path": "<XRController>{LeftHand}/{SecondaryButton}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Lock/Unlock",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
@@ -2805,7 +2825,7 @@
                 {
                     "name": "",
                     "id": "5165643a-d13b-4ed4-88c6-6310d0e28c85",
-                    "path": "*/{SecondaryButton}",
+                    "path": "<XRController>{RightHand}/{SecondaryButton}",
                     "interactions": "",
                     "processors": "",
                     "groups": "Generic XR Controller",

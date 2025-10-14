@@ -613,12 +613,17 @@ public class ModelPart : ModelObject, IColorChangable, IDeletable, IPunObservabl
     {
         isGrabbed = true;
         OnGrabbed();
+
+
+       
     }
 
     private void OnExit(SelectExitEventArgs args)
     {
         isGrabbed = false;
         OnGrabReleased();
+
+        
     }
     #endregion
 
@@ -652,6 +657,25 @@ public class ModelPart : ModelObject, IColorChangable, IDeletable, IPunObservabl
         // Interface implementation - not used in this context
         throw new System.NotImplementedException();
     }
+
+
+    [PunRPC]
+    private void ApplyCustomColorRPC(float r, float g, float b)
+    {
+        Color pickedColor = new Color(r, g, b);
+
+        if (TryGetComponent(out Renderer rend))
+        {
+            rend.material.SetColor("_BaseColor", pickedColor);
+        }
+        else if (transform.childCount > 0 && transform.GetChild(0).TryGetComponent(out Renderer childRend))
+        {
+            childRend.material.SetColor("_BaseColor", pickedColor);
+        }
+
+        Debug.Log($"?? Custom color applied: {pickedColor}");
+    }
+
     #endregion
 
     #region Delete Functionality

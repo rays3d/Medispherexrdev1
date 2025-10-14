@@ -146,6 +146,10 @@ MonoBehaviour:
   - UpdatePresenterMode
   - SyncGrabbedState
   - SpawnModelRPC
+  - RPC_SetAccessMode
+  - ApplyColorRPC
+  - ApplyCustomColorRPC
+  - SyncTransparency
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

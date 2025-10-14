@@ -4425,6 +4425,29 @@ public class ModelSample : MonoBehaviourPunCallbacks
             // First, create the object through PhotonNetwork to generate the proper viewID
             GameObject modelInstance = PhotonNetwork.InstantiateRoomObject(prefabWithMeshFilter.name, position, rotation);
 
+
+
+            //neww  for accesspparentchildrelationship
+            currentModelViewID = modelInstance.GetComponent<PhotonView>().ViewID;
+
+            // If it should attach to a parent (child model)
+            if (currentIsChild && SelectionManager.Instance.GetSelectedModel() != null)
+            {
+                modelInstance.transform.SetParent(SelectionManager.Instance.GetSelectedModel().transform, true);
+                Debug.Log($"Child model {currentModelName} attached to {SelectionManager.Instance.GetSelectedModel().name}");
+            }
+
+            // Only assign standalone models to ModelAccessController
+            if (!currentIsChild)
+            {
+                FindObjectOfType<ModelAccessController>()?.SetParentModel(modelInstance);
+            }
+            //neww  for accesspparentchildrelationship
+
+
+
+
+
             // Force the ViewID to match the master's expected ID
             PhotonView newView = modelInstance.GetComponent<PhotonView>();
             if (newView != null)
@@ -4699,6 +4722,33 @@ public class ModelSample : MonoBehaviourPunCallbacks
         {
             // Create network instance of the prefab at the spawn point
             GameObject modelInstance = PhotonNetwork.InstantiateRoomObject(prefabWithMeshFilter.name, spawnPoint.position, Quaternion.Euler(-90f, 0f, 0f));  ///////////
+
+
+
+
+
+
+            // //neww  for accesspparentchildrelationship
+            currentModelViewID = modelInstance.GetComponent<PhotonView>().ViewID;
+            // If it should attach to a parent (child model)
+            if (currentIsChild && SelectionManager.Instance.GetSelectedModel() != null)
+            {
+                modelInstance.transform.SetParent(SelectionManager.Instance.GetSelectedModel().transform, true);
+                Debug.Log($"Child model {currentModelName} attached to {SelectionManager.Instance.GetSelectedModel().name}");
+            }
+
+            // Only assign standalone models to ModelAccessController
+            if (!currentIsChild)
+            {
+                FindObjectOfType<ModelAccessController>()?.SetParentModel(modelInstance);
+            }
+            //  neww  for accesspparentchildrelationship
+
+
+
+
+
+
             currentModelViewID = modelInstance.GetComponent<PhotonView>().ViewID;
 
             // Apply mesh and material to the prefab
@@ -4706,16 +4756,22 @@ public class ModelSample : MonoBehaviourPunCallbacks
 
             // Store model data for late joiners
             StoreModelData(modelInstance);
+            
+                        if (currentIsChild && SelectionManager.Instance.GetSelectedModel() != null)
 
-            if (currentIsChild && SelectionManager.Instance.GetSelectedModel() != null)
+                        {
 
-            {
+                            modelInstance.transform.SetParent(SelectionManager.Instance.GetSelectedModel().transform);
 
-                modelInstance.transform.SetParent(SelectionManager.Instance.GetSelectedModel().transform);
+                            Debug.Log($"Model {currentModelName} set as child of {SelectionManager.Instance.GetSelectedModel().name}");
 
-                Debug.Log($"Model {currentModelName} set as child of {SelectionManager.Instance.GetSelectedModel().name}");
+                        }
 
-            }
+
+
+
+
+
             // Broadcast to all clients that a new model has been created
             photonView.RPC("SyncMeshData", RpcTarget.OthersBuffered, currentModelViewID, currentModelUrl, currentTextureUrl, currentIsTransparent, currentIsChild);
 
@@ -4923,6 +4979,12 @@ public class ModelSample : MonoBehaviourPunCallbacks
                             Debug.Log($"Synced model set as child of {SelectionManager.Instance.GetSelectedModel().name}");
 
                         }
+
+                        
+
+
+
+
                         // Apply texture after mesh is assigned
                         StartCoroutine(DownloadAndApplyTexture(viewID));
                     }
@@ -5062,7 +5124,7 @@ public class ModelSample : MonoBehaviourPunCallbacks
         float maxDimension = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
         float scaleFactor = desiredModelSize / maxDimension;
 
-        if (currentModelUrl.Contains("199") || currentModelUrl.Contains("253")) // Liver modelId
+        if (currentModelUrl.Contains("199") || currentModelUrl.Contains("253") || currentModelUrl.Contains("296") || currentModelUrl.Contains("297")) // Liver modelId
         {
             scaleFactor *= 0.8f; // Adjust to match combined model's liver size
         }
@@ -5090,7 +5152,7 @@ public class ModelSample : MonoBehaviourPunCallbacks
         //collider.size = mesh.bounds.size;
 
 
-        if (currentModelUrl.Contains("199") || currentModelUrl.Contains("253"))
+        if (currentModelUrl.Contains("199") || currentModelUrl.Contains("253") || currentModelUrl.Contains("296") || currentModelUrl.Contains("297"))
         {
             collider.center = new Vector3(0.016418f, -0.118874f, -0.005252f);
             collider.size = new Vector3(0.320679f, 0.1315272f, 0.374281f);
