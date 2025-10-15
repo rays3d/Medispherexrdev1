@@ -150,6 +150,12 @@ MonoBehaviour:
   - ApplyColorRPC
   - ApplyCustomColorRPC
   - SyncTransparency
+  - RPC_ContinueStroke
+  - RPC_DeleteBrush
+  - RPC_EndStroke
+  - RPC_StartStroke
+  - RPC_SyncScale
+  - RPC_SyncSize
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1
