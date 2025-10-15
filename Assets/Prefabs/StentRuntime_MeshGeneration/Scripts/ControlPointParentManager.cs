@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using Photon.Pun;
-using UnityEngine.XR.Interaction.Toolkit;
 
 public class ControlPointParentManager : MonoBehaviour
 {
@@ -15,22 +13,29 @@ public class ControlPointParentManager : MonoBehaviour
     private GameObject _controlPointsParent = null;
     private bool _strokeCompleted = false;
 
+    /// <summary>
+    /// Call this when the stroke is completed to organize control points
+    /// </summary>
     public void OnStrokeCompleted()
     {
         if (_strokeCompleted) return;
-
+        
         if (createParentOnStrokeEnd)
         {
             OrganizeControlPoints();
         }
-
+        
         _strokeCompleted = true;
     }
 
+    /// <summary>
+    /// Organize all control point spheres under a parent object centered between them
+    /// </summary>
     public void OrganizeControlPoints()
     {
+        // Find all control point objects (assuming they start with "ControlPoint_")
         List<Transform> controlPoints = new List<Transform>();
-
+        
         foreach (Transform child in transform)
         {
             if (child.name.StartsWith("ControlPoint_"))
@@ -41,63 +46,65 @@ public class ControlPointParentManager : MonoBehaviour
 
         if (controlPoints.Count == 0) return;
 
+        // Calculate center position of all control points
         Vector3 centerPosition = CalculateCenterPosition(controlPoints);
 
+        // Create parent object at center
         _controlPointsParent = new GameObject(parentObjectName);
         _controlPointsParent.transform.position = centerPosition;
         _controlPointsParent.transform.rotation = Quaternion.identity;
         _controlPointsParent.transform.parent = transform;
 
+        // Reparent all control points to the new parent
         foreach (Transform cp in controlPoints)
         {
             cp.SetParent(_controlPointsParent.transform, true);
         }
 
-        AddNetworkComponents(_controlPointsParent);   // ✅ Network + Grab setup
+        // ✅ Add grab functionality in separate method
+        AddGrabComponents(_controlPointsParent);
     }
 
-    /// <summary>
-    /// Add Collider, Rigidbody, Grab & Photon
-    /// </summary>
-    private void AddNetworkComponents(GameObject obj)
-    {
-        // ✅ PHOTON VIEW
-        PhotonView pv = obj.AddComponent<PhotonView>();
-        pv.ObservedComponents = new System.Collections.Generic.List<Component>();
 
-        // ✅ TRANSFORM SYNC
-        PhotonTransformView ptv = obj.AddComponent<PhotonTransformView>();
-        pv.ObservedComponents.Add(ptv);
-        pv.Synchronization = ViewSynchronization.UnreliableOnChange;
 
-        // ✅ RIGIDBODY SETUP
-        Rigidbody rb = obj.AddComponent<Rigidbody>();
-        rb.useGravity = false;
-        rb.isKinematic = false;
+        /// <summary>
+        /// Add Collider, Rigidbody and XR Grab to the object
+        /// </summary>
+    private void AddGrabComponents(GameObject obj)
+{
+    // ✅ Capsule Collider
+    //Collider capCol = obj.AddComponent<MeshCollider>();
+    // capCol.center = Vector3.zero;
+    // capCol.radius = 0.02f;
+    // capCol.height = 0.1f;
 
-        // ✅ XR GRAB INTERACTABLE
-        XRGrabInteractable grab = obj.AddComponent<XRGrabInteractable>();
-        grab.trackPosition = true;
-        grab.trackRotation = true;
-        grab.throwOnDetach = false;
-        grab.interactionLayers = InteractionLayerMask.GetMask("Default");
+    // ✅ Rigidbody
+    Rigidbody rb = obj.AddComponent<Rigidbody>();
+    rb.useGravity = false;
+    rb.isKinematic = true;   // ✅ Object will NOT move on collisions
+    // ❗ Don't freeze rotation → allow manual rotation
 
-        // ✅ Ownership Transfer on Grab
-        grab.selectEntered.AddListener((args) =>
-        {
-            if (pv && !pv.IsMine) pv.RequestOwnership();
-        });
+    // ✅ XR Grab Interactable
+    var grab = obj.AddComponent<UnityEngine.XR.Interaction.Toolkit.XRGrabInteractable>();
+    grab.trackPosition = true;
+   // grab.trackRotation = false;   // ✅ No snapping to controller
+    //grab.throwOnDetach = false;
 
-        // Attach Point for stable grabbing
-        Transform attachPoint = new GameObject("AttachPoint").transform;
-        attachPoint.SetParent(obj.transform, false);
-        attachPoint.localPosition = Vector3.zero;
+    // 🔒 Fixed Attach Point - Prevent snap rotation
+    Transform attachPoint = new GameObject("AttachPoint").transform;
+    attachPoint.SetParent(obj.transform, false);
+    attachPoint.localPosition = Vector3.zero;
+    attachPoint.localRotation = Quaternion.identity;
         grab.attachTransform = attachPoint;
 
-        // ✅ Multiplayer Delete
-        obj.AddComponent<Deletable>();
-    }
+        //Delete functionality
+        var deletable = obj.AddComponent<Deletable>();
+}
 
+
+    /// <summary>
+    /// Calculate the center position of all control points
+    /// </summary>
     private Vector3 CalculateCenterPosition(List<Transform> controlPoints)
     {
         if (controlPoints.Count == 0) return Vector3.zero;
@@ -111,22 +118,34 @@ public class ControlPointParentManager : MonoBehaviour
         return sum / controlPoints.Count;
     }
 
+    /// <summary>
+    /// Get the parent object containing all control points
+    /// </summary>
     public GameObject GetControlPointsParent()
     {
         return _controlPointsParent;
     }
 
+    /// <summary>
+    /// Check if control points have been organized
+    /// </summary>
     public bool IsOrganized()
     {
         return _controlPointsParent != null;
     }
 
+    /// <summary>
+    /// Reset the stroke completion state (useful for reusing the component)
+    /// </summary>
     public void ResetStrokeState()
     {
         _strokeCompleted = false;
         _controlPointsParent = null;
     }
 
+    /// <summary>
+    /// Manually trigger organization of control points
+    /// </summary>
     public void ManualOrganize()
     {
         OrganizeControlPoints();
@@ -143,4 +162,6 @@ public class ControlPointParentManager : MonoBehaviour
             _controlPointsParent.transform.position + Vector3.up * gizmoSize * 2
         );
     }
+    
+    
 }
