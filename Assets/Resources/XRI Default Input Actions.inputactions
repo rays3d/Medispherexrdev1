@@ -2644,18 +2644,18 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Size Increase",
+                    "name": "Size Decrease",
                     "type": "Button",
-                    "id": "425b40a2-6ec4-4d48-bbd4-73dc94fd1ae5",
+                    "id": "612ae2b7-e842-41b8-99f7-77804369130e",
                     "expectedControlType": "Button",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Size Decrease",
+                    "name": "Size Increase",
                     "type": "Button",
-                    "id": "612ae2b7-e842-41b8-99f7-77804369130e",
+                    "id": "425b40a2-6ec4-4d48-bbd4-73dc94fd1ae5",
                     "expectedControlType": "Button",
                     "processors": "",
                     "interactions": "",
@@ -2688,7 +2688,7 @@
                 {
                     "name": "",
                     "id": "4d3e023e-3431-4b27-aafe-9b5725ec6297",
-                    "path": "<OculusTouchController>{LeftHand}/thumbstick/left",
+                    "path": "<OculusTouchController>{LeftHand}/thumbstick/up",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -2699,7 +2699,7 @@
                 {
                     "name": "",
                     "id": "5d6e7935-d0e4-4d72-94cf-fbc3094371e0",
-                    "path": "<OculusTouchController>{LeftHand}/thumbstick/left",
+                    "path": "<XRInputV1::Oculus::OculusTouchControllerOpenXR>{LeftHand}/thumbstick/down",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
