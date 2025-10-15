@@ -2642,6 +2642,24 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "Size Increase",
+                    "type": "Button",
+                    "id": "425b40a2-6ec4-4d48-bbd4-73dc94fd1ae5",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Size Decrease",
+                    "type": "Button",
+                    "id": "612ae2b7-e842-41b8-99f7-77804369130e",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -2664,6 +2682,28 @@
                     "processors": "",
                     "groups": "",
                     "action": "Lock/Unlock",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "4d3e023e-3431-4b27-aafe-9b5725ec6297",
+                    "path": "<OculusTouchController>{LeftHand}/thumbstick/left",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Size Increase",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "5d6e7935-d0e4-4d72-94cf-fbc3094371e0",
+                    "path": "<OculusTouchController>{LeftHand}/thumbstick/left",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Size Decrease",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
