@@ -56,5 +56,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "MediSphere File.sln"
+    "dotnet.defaultSolution": "Medispherexrdev1.sln"
 }

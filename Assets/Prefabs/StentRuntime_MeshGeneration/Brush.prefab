@@ -1,0 +1,151 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &6530183645391358882
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7364797912283254149}
+  - component: {fileID: 7525048624637051502}
+  - component: {fileID: 240660098910521439}
+  - component: {fileID: 2442719455792641479}
+  m_Layer: 0
+  m_Name: Brush
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7364797912283254149
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6530183645391358882}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7525048624637051502
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6530183645391358882}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2a667f2d5877ad4889b6bcd17807f2f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _brushStrokePrefab: {fileID: 1196413553089462, guid: 749d541d662db9f4fa312e0e4fb6cef1,
+    type: 3}
+  _hand: 1
+  _brushTipTransform: {fileID: 0}
+  _brushTipSphere: {fileID: 0}
+  drawAction:
+    m_UseReference: 1
+    m_Action:
+      m_Name: Draw
+      m_Type: 0
+      m_ExpectedControlType: 
+      m_Id: 041c614e-de5c-4325-8156-a4c28b3f6cd9
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    m_Reference: {fileID: 11801353742067714, guid: c348712bda248c246b8c49b3db54643f,
+      type: 3}
+  sizeIncreaseAction:
+    m_UseReference: 1
+    m_Action:
+      m_Name: Size Increase
+      m_Type: 0
+      m_ExpectedControlType: 
+      m_Id: 415450a6-763a-438d-a101-ee734ff50aa9
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    m_Reference: {fileID: 1208632670528409508, guid: c348712bda248c246b8c49b3db54643f,
+      type: 3}
+  sizeDecreaseAction:
+    m_UseReference: 1
+    m_Action:
+      m_Name: Size Decrease
+      m_Type: 0
+      m_ExpectedControlType: 
+      m_Id: b3a8ec31-0315-4ae9-b792-012d5d64240f
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    m_Reference: {fileID: 5390570183891221918, guid: c348712bda248c246b8c49b3db54643f,
+      type: 3}
+  minSize: 0.5
+  maxSize: 3
+  sizeAdjustSpeed: 1
+  previewScaleMultiplier: 1
+  maxDrawingLength: 0.035
+  limitDrawingLength: 1
+--- !u!114 &240660098910521439
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6530183645391358882}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb9c214551c3da74ea5c59996f072dcf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  selectAction:
+    m_UseReference: 1
+    m_Action:
+      m_Name: Select
+      m_Type: 0
+      m_ExpectedControlType: 
+      m_Id: a69c47e3-13c4-42c9-a2cf-b52fdcd00849
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    m_Reference: {fileID: 11801353742067714, guid: c348712bda248c246b8c49b3db54643f,
+      type: 3}
+  leftRayInteractor: {fileID: 0}
+  rightRayInteractor: {fileID: 0}
+  useBothHands: 1
+  scaleSlider: {fileID: 0}
+  hoverColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  selectedColor: {r: 0, g: 1, b: 0, a: 1}
+--- !u!114 &2442719455792641479
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6530183645391358882}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa584fbee541324448dd18d8409c7a41, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ObservedComponentsFoldoutOpen: 1
+  Group: 0
+  prefixField: -1
+  Synchronization: 3
+  OwnershipTransfer: 0
+  observableSearch: 2
+  ObservedComponents: []
+  sceneViewId: 0
+  InstantiationId: 0
+  isRuntimeInstantiated: 0
