@@ -11704,9 +11704,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c0e4fd78bcd2d6142a8a4ccbf31c157b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  modelDatabase:
-  - fileName: 
-    downloadURL: 
 --- !u!4 &577003247
 Transform:
   m_ObjectHideFlags: 0
