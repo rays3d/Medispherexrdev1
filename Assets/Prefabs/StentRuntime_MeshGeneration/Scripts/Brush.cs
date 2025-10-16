@@ -2,6 +2,7 @@
 using UnityEngine;
 using UnityEngine.XR; // Required for accessing XRNode and InputTracking
 using UnityEngine.InputSystem; // Required for using the new Input System actions
+using Photon.Pun;
 
 /// <summary>
 /// Manages the XR drawing functionality. It handles input for starting/ending a brush stroke,
@@ -9,6 +10,7 @@ using UnityEngine.InputSystem; // Required for using the new Input System action
 /// This script relies on the 'BrushStroke' component (not included here) to handle the
 /// actual mesh generation of the stroke.
 /// </summary>
+[RequireComponent(typeof(PhotonView))]
 public class Brush : MonoBehaviour
 {
     // --- Editor Configuration ---
@@ -50,6 +52,10 @@ public class Brush : MonoBehaviour
     private Vector3 _lastDrawPosition; // The position of the brush tip in the previous frame
     #endregion
 
+    #region Networking Setup
+    public PhotonView _photonView;
+    #endregion
+
     // --- Input System Setup ---
     #region Input Setup
     private void OnEnable()
@@ -73,6 +79,10 @@ public class Brush : MonoBehaviour
     #region Core Logic
     private void Start()
     {
+        if(_photonView == null)
+        {
+            _photonView = GetComponent<PhotonView>();
+        }
         // Store the initial scale of the brush tip sphere for relative scaling later
         if (_brushTipSphere != null)
         {
@@ -82,6 +92,9 @@ public class Brush : MonoBehaviour
 
     private void Update()
     {
+        if (!PhotonNetwork.IsConnected)
+            return;
+         
         // 1. Get Hand Pose: Determine which XRNode to use and get its latest pose data
         XRNode node = _hand == Hand.LeftHand ? XRNode.LeftHand : XRNode.RightHand;
         bool handIsTracking = UpdatePose(node, ref _handPosition, ref _handRotation);
@@ -116,7 +129,8 @@ public class Brush : MonoBehaviour
         if (triggerPressed && _activeBrushStroke == null)
         {
             // Instantiate the prefab and get the BrushStroke component
-            GameObject brushStrokeGO = Instantiate(_brushStrokePrefab);
+            GameObject brushStrokeGO = PhotonNetwork.Instantiate("Tools/BrushStroke", Vector3.zero, Quaternion.identity);
+
             _activeBrushStroke = brushStrokeGO.GetComponent<BrushStroke>();
             
             // Apply the current drawing size to the new stroke

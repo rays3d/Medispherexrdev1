@@ -1,10 +1,12 @@
 ﻿using UnityEngine;
+using Photon.Pun;
 
 /// <summary>
 /// The main component representing a single brush stroke.
 /// It acts as a facade, managing and coordinating the mesh generation (BrushStrokeMesh) 
 /// and the organization of interactive control points (ControlPointParentManager).
 /// </summary>
+[RequireComponent(typeof(PhotonView))]
 public class BrushStroke : MonoBehaviour
 {
     // --- Editor Configuration ---
@@ -15,9 +17,16 @@ public class BrushStroke : MonoBehaviour
     private BrushStrokeMesh _brushStrokeMesh; // Component responsible for generating and deforming the 3D geometry
     private ControlPointParentManager _controlPointParentManager; // Component responsible for organizing and managing control point GameObjects
 
+    #region  Networking Setup
+    public PhotonView _photonView;
+    #endregion
     // --- Initialization ---
     private void Awake()
     {
+        if (_photonView == null)
+        {
+            _photonView = GetComponent<PhotonView>();
+        }
         // 1. Initialize BrushStrokeMesh
         _brushStrokeMesh = GetComponentInChildren<BrushStrokeMesh>();
         if (_brushStrokeMesh == null)
@@ -26,10 +35,10 @@ public class BrushStroke : MonoBehaviour
             GameObject meshObject = new GameObject("BrushStrokeMesh");
             meshObject.transform.SetParent(transform);
             _brushStrokeMesh = meshObject.AddComponent<BrushStrokeMesh>();
-            
+
             // Add a MeshRenderer to display the geometry
             MeshRenderer renderer = meshObject.AddComponent<MeshRenderer>();
-            
+
             // Apply the configured material
             if (_brushStrokeMaterial != null)
             {
@@ -47,6 +56,7 @@ public class BrushStroke : MonoBehaviour
         }
     }
 
+    #region  Core Logic
     // --- Public Stroke Drawing Methods ---
 
     /// <summary>
@@ -54,14 +64,18 @@ public class BrushStroke : MonoBehaviour
     /// </summary>
     /// <param name="position">The starting world position of the brush tip.</param>
     /// <param name="rotation">The starting world rotation of the brush tip.</param>
-    public void BeginBrushStrokeWithBrushTipPoint(Vector3 position, Quaternion rotation)
-    {
-        if (_brushStrokeMesh != null)
+        public void BeginBrushStrokeWithBrushTipPoint(Vector3 position, Quaternion rotation)
         {
-            _brushStrokeMesh.ClearRibbon();
-            _brushStrokeMesh.InsertRibbonPoint(position, rotation);
+            if (_brushStrokeMesh != null)
+            {
+                _brushStrokeMesh.ClearRibbon();
+                _brushStrokeMesh.InsertRibbonPoint(position, rotation);
+            }
+
+            // Send to others
+            _photonView.RPC("RPC_BeginBrushStrokeWithBrushTipPoint", RpcTarget.Others, position, rotation);
         }
-    }
+
 
     /// <summary>
     /// Continues the brush stroke by inserting a new point.
@@ -75,6 +89,8 @@ public class BrushStroke : MonoBehaviour
         {
             _brushStrokeMesh.InsertRibbonPoint(position, rotation);
         }
+        // Send to others
+        _photonView.RPC("RPC_MoveBrushStrokeWithBrushTipPoint", RpcTarget.Others, position, rotation);
     }
 
     /// <summary>
@@ -89,6 +105,9 @@ public class BrushStroke : MonoBehaviour
             // Insert the final point
             _brushStrokeMesh.InsertRibbonPoint(position, rotation);
         }
+
+         // Send to others
+        _photonView.RPC("RPC_EndBrushStrokeWithBrushTipPoint", RpcTarget.Others, position, rotation);
 
         // Organize control points when the stroke is completed to group them under a single parent
         if (_controlPointParentManager != null)
@@ -109,8 +128,11 @@ public class BrushStroke : MonoBehaviour
         {
             _brushStrokeMesh.UpdateLastRibbonPoint(position, rotation);
         }
-    }
 
+        //Send to others
+        _photonView.RPC("RPC_UpdateBrushStrokeWithBrushTipPoint",RpcTarget.Others, position, rotation);
+    }
+    #endregion
     // --- Public Management Methods ---
 
     /// <summary>
@@ -149,4 +171,44 @@ public class BrushStroke : MonoBehaviour
         }
         return false;
     }
+
+    #region RPC Methods
+    [PunRPC]
+    private void RPC_BeginBrushStrokeWithBrushTipPoint(Vector3 position, Quaternion rotation)
+    {
+        if (_brushStrokeMesh != null)
+        {
+            _brushStrokeMesh.ClearRibbon();
+            _brushStrokeMesh.InsertRibbonPoint(position, rotation);
+        }
+    }
+
+    [PunRPC]
+    private void RPC_MoveBrushStrokeWithBrushTipPoint(Vector3 position, Quaternion rotation)
+    {
+        if (_brushStrokeMesh != null)
+        {
+            _brushStrokeMesh.InsertRibbonPoint(position, rotation);
+        }
+    }
+
+    [PunRPC]
+    private void RPC_EndBrushStrokeWithBrushTipPoint(Vector3 position, Quaternion rotation)
+    {
+        if (_brushStrokeMesh != null)
+        {
+            // Insert the final point
+            _brushStrokeMesh.InsertRibbonPoint(position, rotation);
+        }
+    }
+
+    [PunRPC]
+    private void RPC_UpdateBrushStrokeWithBrushTipPoint(Vector3 position, Quaternion rotation)
+    {
+        if (_brushStrokeMesh != null)
+        {
+            _brushStrokeMesh.UpdateLastRibbonPoint(position, rotation);
+        }
+    }
+    #endregion
 }

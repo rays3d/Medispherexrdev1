@@ -156,6 +156,10 @@ MonoBehaviour:
   - RPC_StartStroke
   - RPC_SyncScale
   - RPC_SyncSize
+  - RPC_BeginBrushStrokeWithBrushTipPoint
+  - RPC_EndBrushStrokeWithBrushTipPoint
+  - RPC_MoveBrushStrokeWithBrushTipPoint
+  - RPC_UpdateBrushStrokeWithBrushTipPoint
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1
