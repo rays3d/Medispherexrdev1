@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
+using Photon.Pun;
 using UnityEngine;
 
 public class ControlPointParentManager : MonoBehaviour
@@ -13,18 +15,25 @@ public class ControlPointParentManager : MonoBehaviour
     private GameObject _controlPointsParent = null;
     private bool _strokeCompleted = false;
 
+    PhotonView _photonView;
+
+    private void Awake()
+    {
+        _photonView = GetComponent<PhotonView>();
+    }
+
     /// <summary>
     /// Call this when the stroke is completed to organize control points
     /// </summary>
     public void OnStrokeCompleted()
     {
         if (_strokeCompleted) return;
-        
+
         if (createParentOnStrokeEnd)
         {
             OrganizeControlPoints();
         }
-        
+
         _strokeCompleted = true;
     }
 
@@ -35,121 +44,93 @@ public class ControlPointParentManager : MonoBehaviour
     {
         // Find all control point objects (assuming they start with "ControlPoint_")
         List<Transform> controlPoints = new List<Transform>();
-        
         foreach (Transform child in transform)
         {
             if (child.name.StartsWith("ControlPoint_"))
-            {
                 controlPoints.Add(child);
-            }
         }
 
         if (controlPoints.Count == 0) return;
 
-        // Calculate center position of all control points
+        // Calculate center position
         Vector3 centerPosition = CalculateCenterPosition(controlPoints);
 
-        // Create parent object at center
-        _controlPointsParent = new GameObject(parentObjectName);
-        _controlPointsParent.transform.position = centerPosition;
-        _controlPointsParent.transform.rotation = Quaternion.identity;
-        _controlPointsParent.transform.parent = transform;
-
-        // Reparent all control points to the new parent
-        foreach (Transform cp in controlPoints)
+        // Call RPC to create parent and reparent on all clients
+        _photonView = GetComponent<PhotonView>();
+        if (_photonView != null)
         {
-            cp.SetParent(_controlPointsParent.transform, true);
+            _photonView.RPC("RPC_CreateControlPointsParent", RpcTarget.AllBuffered, centerPosition);
         }
-
-        //  Add grab functionality in separate method
-        AddGrabComponents(_controlPointsParent);
     }
 
+    [PunRPC]
+    private void RPC_CreateControlPointsParent(Vector3 position)
+    {
+        if (_controlPointsParent != null) return;
 
+        // ✅ Spawn over network
+        GameObject parent = PhotonNetwork.Instantiate(
+            "Tools/ControlPointParent",
+            position,
+            Quaternion.identity
+        );
+        
+        _controlPointsParent = parent;
 
-        /// <summary>
-        /// Add Collider, Rigidbody and XR Grab to the object
-        /// </summary>
+        // Reparent existing control points
+        foreach (Transform child in transform.Cast<Transform>().ToArray())
+        {
+            if (child.name.StartsWith("ControlPoint_"))
+                child.SetParent(_controlPointsParent.transform, true);
+        }
+        AddGrabComponents(parent);
+    }
+
     private void AddGrabComponents(GameObject obj)
-{
-    //  Capsule Collider
-    //Collider capCol = obj.AddComponent<MeshCollider>();
-    // capCol.center = Vector3.zero;
-    // capCol.radius = 0.02f;
-    // capCol.height = 0.1f;
+    {
+        if (obj.GetComponent<Rigidbody>() == null)
+        {
+            Rigidbody rb = obj.AddComponent<Rigidbody>();
+            rb.useGravity = false;
+            rb.isKinematic = true;
+        }
 
-    //  Rigidbody
-    Rigidbody rb = obj.AddComponent<Rigidbody>();
-    rb.useGravity = false;
-    rb.isKinematic = true;   //  Object will NOT move on collisions
-    // ❗ Don't freeze rotation → allow manual rotation
+        var grab = obj.GetComponent<UnityEngine.XR.Interaction.Toolkit.XRGrabInteractable>();
+        if (grab == null)
+        {
+            grab = obj.AddComponent<UnityEngine.XR.Interaction.Toolkit.XRGrabInteractable>();
+            grab.trackPosition = true;
 
-    //  XR Grab Interactable
-    var grab = obj.AddComponent<UnityEngine.XR.Interaction.Toolkit.XRGrabInteractable>();
-    grab.trackPosition = true;
-   // grab.trackRotation = false;   //  No snapping to controller
-    //grab.throwOnDetach = false;
+            Transform attachPoint = new GameObject("AttachPoint").transform;
+            attachPoint.SetParent(obj.transform, false);
+            attachPoint.localPosition = Vector3.zero;
+            attachPoint.localRotation = Quaternion.identity;
+            grab.attachTransform = attachPoint;
 
-    // 🔒 Fixed Attach Point - Prevent snap rotation
-    Transform attachPoint = new GameObject("AttachPoint").transform;
-    attachPoint.SetParent(obj.transform, false);
-    attachPoint.localPosition = Vector3.zero;
-    attachPoint.localRotation = Quaternion.identity;
-        grab.attachTransform = attachPoint;
+            obj.AddComponent<Deletable>();
+        }
+    }
 
-        //Delete functionality
-        var deletable = obj.AddComponent<Deletable>();
-}
-
-
-    /// <summary>
-    /// Calculate the center position of all control points
-    /// </summary>
     private Vector3 CalculateCenterPosition(List<Transform> controlPoints)
     {
         if (controlPoints.Count == 0) return Vector3.zero;
 
         Vector3 sum = Vector3.zero;
-        foreach (Transform cp in controlPoints)
-        {
-            sum += cp.position;
-        }
-
+        foreach (Transform cp in controlPoints) sum += cp.position;
         return sum / controlPoints.Count;
     }
 
-    /// <summary>
-    /// Get the parent object containing all control points
-    /// </summary>
-    public GameObject GetControlPointsParent()
-    {
-        return _controlPointsParent;
-    }
+    public GameObject GetControlPointsParent() => _controlPointsParent;
 
-    /// <summary>
-    /// Check if control points have been organized
-    /// </summary>
-    public bool IsOrganized()
-    {
-        return _controlPointsParent != null;
-    }
+    public bool IsOrganized() => _controlPointsParent != null;
 
-    /// <summary>
-    /// Reset the stroke completion state (useful for reusing the component)
-    /// </summary>
     public void ResetStrokeState()
     {
         _strokeCompleted = false;
         _controlPointsParent = null;
     }
 
-    /// <summary>
-    /// Manually trigger organization of control points
-    /// </summary>
-    public void ManualOrganize()
-    {
-        OrganizeControlPoints();
-    }
+    public void ManualOrganize() => OrganizeControlPoints();
 
     private void OnDrawGizmos()
     {
@@ -162,6 +143,4 @@ public class ControlPointParentManager : MonoBehaviour
             _controlPointsParent.transform.position + Vector3.up * gizmoSize * 2
         );
     }
-    
-    
 }

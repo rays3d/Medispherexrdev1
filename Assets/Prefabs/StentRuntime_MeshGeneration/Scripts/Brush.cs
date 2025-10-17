@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.XR; // Required for accessing XRNode and InputTracking
-using UnityEngine.InputSystem; // Required for using the new Input System actions
+using UnityEngine.XR;
+using UnityEngine.InputSystem;
 using Photon.Pun;
 
 /// <summary>
@@ -50,6 +50,10 @@ public class Brush : MonoBehaviour
     private Vector3 _initialSphereScale; // Original local scale of the _brushTipSphere
     private float _currentStrokeLength = 0f; // Accumulated length of the current stroke
     private Vector3 _lastDrawPosition; // The position of the brush tip in the previous frame
+    
+    // ✅ NEW: Trigger release tracking
+    private bool _requireTriggerRelease = false; // Flag to block new strokes until trigger released
+    private bool _wasTriggerPressed = false; // Previous frame trigger state
     #endregion
 
     #region Networking Setup
@@ -94,6 +98,7 @@ public class Brush : MonoBehaviour
     {
         if (!PhotonNetwork.IsConnected)
             return;
+       
          
         // 1. Get Hand Pose: Determine which XRNode to use and get its latest pose data
         XRNode node = _hand == Hand.LeftHand ? XRNode.LeftHand : XRNode.RightHand;
@@ -108,11 +113,30 @@ public class Brush : MonoBehaviour
         if (!handIsTracking)
             triggerPressed = false;
 
+        // ✅ NEW: Detect trigger release to reset the block
+        bool triggerJustReleased = _wasTriggerPressed && !triggerPressed;
+        if (triggerJustReleased)
+        {
+            _requireTriggerRelease = false; // Allow new segment after release
+            Debug.Log("✅ Trigger released - can start new segment");
+        }
+
         // 3. Handle Size Adjustment
         HandleSizeAdjustment(increasePressed, decreasePressed, triggerPressed);
 
         // 4. Update Brush Tip Visual
         UpdateBrushTipSphereSize();
+
+        // ✅ NEW: Visual feedback when trigger release is required
+        if (_requireTriggerRelease && _brushTipSphere != null)
+        {
+            // Flash red/yellow to indicate "Release trigger!"
+            Renderer tipRenderer = _brushTipSphere.GetComponent<Renderer>();
+            if (tipRenderer != null)
+            {
+                tipRenderer.material.color = Color.Lerp(Color.red, Color.yellow, Mathf.PingPong(Time.time * 3f, 1f));
+            }
+        }
 
         // 5. Determine Draw Position
         Vector3 drawPosition = _brushTipTransform != null ? _brushTipTransform.position : _handPosition;
@@ -125,8 +149,8 @@ public class Brush : MonoBehaviour
             forcedEnd = true;
         }
 
-        // 7. Start New Stroke
-        if (triggerPressed && _activeBrushStroke == null)
+        // ✅ 7. Start New Stroke (ONLY if trigger release NOT required)
+        if (triggerPressed && _activeBrushStroke == null && !_requireTriggerRelease)
         {
             // Instantiate the prefab and get the BrushStroke component
             GameObject brushStrokeGO = PhotonNetwork.Instantiate("Tools/BrushStroke", Vector3.zero, Quaternion.identity);
@@ -144,18 +168,52 @@ public class Brush : MonoBehaviour
             _lastDrawPosition = drawPosition;
         }
 
-        // 8. Continue Stroke
+        // ✅ 8. Continue Stroke (with precise length limiting)
         if (triggerPressed && _activeBrushStroke != null && !forcedEnd)
         {
-            // Calculate distance moved and update total stroke length
+            // Calculate distance moved
             float distanceMoved = Vector3.Distance(drawPosition, _lastDrawPosition);
+            
+            // ✅ NEW: Check if next point would exceed max length
+            if (limitDrawingLength && (_currentStrokeLength + distanceMoved) >= maxDrawingLength)
+            {
+                // Calculate exact cutoff point
+                float remainingDistance = maxDrawingLength - _currentStrokeLength;
+                float ratio = remainingDistance / distanceMoved;
+                Vector3 finalPosition = Vector3.Lerp(_lastDrawPosition, drawPosition, ratio);
+                Quaternion finalRotation = drawRotation;
+                
+                // Draw to exact max point
+                _activeBrushStroke.MoveBrushTipToPoint(finalPosition, finalRotation);
+                
+                // Update to exactly max length
+                _currentStrokeLength = maxDrawingLength;
+                
+                // Force end the stroke
+                _activeBrushStroke.EndBrushStrokeWithBrushTipPoint(finalPosition, finalRotation);
+                
+                // Clear the active reference and reset length
+                _activeBrushStroke = null;
+                _currentStrokeLength = 0f;
+                
+                // ✅ CRITICAL: Require trigger release before allowing new segment
+                _requireTriggerRelease = true;
+                
+                Debug.Log("🛑 Max length reached! Release trigger to start new segment.");
+                
+                // Store trigger state and exit
+                _wasTriggerPressed = triggerPressed;
+                return;
+            }
+            
+            // Normal drawing: update total stroke length
             _currentStrokeLength += distanceMoved;
             _lastDrawPosition = drawPosition;
 
             // Update the brush stroke with the new point
             _activeBrushStroke.MoveBrushTipToPoint(drawPosition, drawRotation);
 
-            // Check if movement just crossed the limit
+            // Check if movement just crossed the limit (backup check)
             if (limitDrawingLength && _currentStrokeLength >= maxDrawingLength)
             {
                 forcedEnd = true;
@@ -172,6 +230,9 @@ public class Brush : MonoBehaviour
             _activeBrushStroke = null;
             _currentStrokeLength = 0f;
         }
+
+        // ✅ NEW: Store trigger state for next frame comparison
+        _wasTriggerPressed = triggerPressed;
     }
     #endregion
 
@@ -281,6 +342,12 @@ public class Brush : MonoBehaviour
     public float GetMaxDrawingLength()
     {
         return maxDrawingLength;
+    }
+
+    // ✅ NEW: Check if trigger release is required
+    public bool RequiresTriggerRelease()
+    {
+        return _requireTriggerRelease;
     }
     #endregion
 }

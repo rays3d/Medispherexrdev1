@@ -1,11 +1,15 @@
 ﻿using System.Collections.Generic;
+using Photon.Pun;
 using UnityEngine;
 
 /// <summary>
 /// Generates and manages a 3D mesh representing a brush stroke, which is composed of a series of interconnected "cross-rings" (toroidal shapes).
 /// It supports dynamic insertion of points, mesh modification via movable/scalable "control points," and overall scaling.
 /// </summary>
-public class BrushStrokeMesh : MonoBehaviour
+/// 
+
+[RequireComponent(typeof(PhotonView))]
+public class BrushStrokeMesh : MonoBehaviourPun
 {
     // --- Editor-Visible Configuration Parameters ---
     #region Configuration Fields
@@ -93,6 +97,9 @@ public class BrushStrokeMesh : MonoBehaviour
     }
     #endregion
 
+    #region Photon Settings
+    private PhotonView _photonView;
+    #endregion
     // --- Internal Control Point Data Structure ---
     #region ControlPoint Structure
     /// <summary>
@@ -100,11 +107,11 @@ public class BrushStrokeMesh : MonoBehaviour
     /// </summary>
     private class ControlPoint
     {
-        public GameObject gameObject;                     // The Unity GameObject (e.g., sphere) for manipulation
-        public Vector3 originalPosition;                 // Position when the point was created
-        public Quaternion originalRotation;               // Rotation when the point was created
-        public Vector3 initialScale;                     // Initial local scale of the GameObject
-        public int crossRingIndex;                       // Index of the brush stroke segment this point corresponds to
+        public GameObject gameObject;  // The Unity GameObject (e.g., sphere) for manipulation
+        public Vector3 originalPosition; // Position when the point was created
+        public Quaternion originalRotation;  // Rotation when the point was created
+        public Vector3 initialScale; // Initial local scale of the GameObject
+        public int crossRingIndex; // Index of the brush stroke segment this point corresponds to
         public List<int> affectedVertexIndices = new List<int>(); // Indices of vertices belonging to this segment
         public List<Vector3> originalVertexOffsets = new List<Vector3>(); // Local offset from the control point's center to each affected vertex
     }
@@ -114,6 +121,12 @@ public class BrushStrokeMesh : MonoBehaviour
     #region Unity Lifecycle
     private void Awake()
     {
+        _photonView = GetComponent<PhotonView>();
+        if (_photonView == null)
+        {
+            Debug.LogError("PhotonView not found in parent hierarchy. BrushStrokeMesh requires a PhotonView for networking.");
+            _photonView = gameObject.AddComponent<PhotonView>();
+        }
         // Get or add MeshFilter component and initialize the Mesh object
         MeshFilter filter = GetComponent<MeshFilter>();
         if (!filter) filter = gameObject.AddComponent<MeshFilter>();
@@ -196,6 +209,17 @@ public class BrushStrokeMesh : MonoBehaviour
             // 3. Create a control point associated with this new segment
             CreateControlPoint(position, finalRotation, _dotCount, startVertexIndex, _vertices.Count);
 
+            #region  RPC Calls
+            // _photonView.RPC(
+            //         "RPC_CreateControlPoint",
+            //         RpcTarget.AllBuffered,
+            //         position,
+            //         finalRotation,
+            //         _dotCount,
+            //         startVertexIndex,
+            //         _vertices.Count
+            //     );
+            #endregion
             // 4. Update state variables for the next point
             _connectionPoints = currentPoints; // Store the new connection points
             _connectionDirections = currentDirections;
@@ -269,18 +293,22 @@ public class BrushStrokeMesh : MonoBehaviour
             cpObject.transform.position = position;
             cpObject.transform.rotation = rotation;
             cpObject.transform.parent = transform;
-            
+
             // Set material and remove collider for cleaner interaction if necessary
             Renderer renderer = cpObject.transform.GetComponent<Renderer>();
             if (renderer != null) renderer.material = _controlPointMat;
 
             Collider collider = cpObject.transform.GetComponent<Collider>();
-            if (collider != null) Destroy(collider); // Often removed for custom interaction logic
+
+            if (collider == null)
+            {
+                collider = cpObject.AddComponent<SphereCollider>();
+            }
         }
 
         cpObject.name = "ControlPoint_" + index;
         cpObject.transform.localScale = Vector3.one * scaledControlPointSize;
-        
+
 
         // Store the ControlPoint data
         ControlPoint cp = new ControlPoint
@@ -375,13 +403,13 @@ public class BrushStrokeMesh : MonoBehaviour
                     if (vertexIndex < _vertices.Count)
                     {
                         Vector3 localVertex = cp.originalVertexOffsets[i];
-                        
+
                         // 1. Apply rotation delta to the original offset
                         localVertex = rotationDelta * localVertex;
-                        
+
                         // 2. Apply scale factor (modifies the radius of the stroke)
                         localVertex *= finalScaleFactor;
-                        
+
                         // 3. Calculate new world position: original position + transformed local offset + position delta
                         _vertices[vertexIndex] = cp.originalPosition + localVertex + positionDelta;
                     }
@@ -457,7 +485,7 @@ public class BrushStrokeMesh : MonoBehaviour
             float ringX = ringRadius * Mathf.Cos(ringAngle);
             float ringY = ringRadius * Mathf.Sin(ringAngle);
             // Center of the tube cross-section in local space (Z-axis is the stroke direction)
-            Vector3 ringCenter = new Vector3(ringX, ringY, 0); 
+            Vector3 ringCenter = new Vector3(ringX, ringY, 0);
 
             for (int j = 0; j <= tubeSegs; j++) // Iterate around the tube cross-section (minor circumference)
             {
@@ -472,10 +500,10 @@ public class BrushStrokeMesh : MonoBehaviour
 
                 // Calculate local vertex position (ring center + scaled tube radius * tube direction)
                 Vector3 localVertex = ringCenter + tubeDirection * scaledTubeRadius;
-                
+
                 // Transform local vertex to world space relative to the mesh component
                 Vector3 vertex = center + rotation * localVertex;
-                
+
                 // The normal is the rotated tube direction (outward from the tube)
                 Vector3 normal = rotation * tubeDirection.normalized; // Normal should always be normalized
 
@@ -540,7 +568,17 @@ public class BrushStrokeMesh : MonoBehaviour
         _mesh.SetNormals(_normals);
         _mesh.SetTriangles(_triangles, 0);
         // Recalculate bounds is critical after modifying vertices, especially for culling and shadows.
-        _mesh.RecalculateBounds(); 
+        _mesh.RecalculateBounds();
     }
+    #endregion
+
+    #region  Photon RPC
+    [PunRPC]
+    public void RPC_CreateControlPoint(Vector3 pos, Quaternion rot, int a, int b, int c)
+    {
+        Debug.Log("RPC Called - Creating Control Point");
+        CreateControlPoint(pos, rot, a, b, c);
+    }
+
     #endregion
 }

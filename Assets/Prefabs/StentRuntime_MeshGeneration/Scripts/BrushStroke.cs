@@ -86,7 +86,7 @@ public class BrushStroke : MonoBehaviour
         }
 
         // Send to others via RPC for network synchronization.
-        _photonView.RPC("RPC_BeginBrushStrokeWithBrushTipPoint", RpcTarget.Others, position, rotation);
+        _photonView.RPC("RPC_BeginBrushStrokeWithBrushTipPoint", RpcTarget.OthersBuffered, position, rotation);
     }
 
 
@@ -105,7 +105,7 @@ public class BrushStroke : MonoBehaviour
         }
         
         // Send to others via RPC for network synchronization.
-        _photonView.RPC("RPC_MoveBrushStrokeWithBrushTipPoint", RpcTarget.Others, position, rotation);
+        _photonView.RPC("RPC_MoveBrushStrokeWithBrushTipPoint", RpcTarget.OthersBuffered, position, rotation);
     }
 
     /// <summary>
@@ -122,7 +122,7 @@ public class BrushStroke : MonoBehaviour
         }
 
         // Send to others via RPC for network synchronization.
-        _photonView.RPC("RPC_EndBrushStrokeWithBrushTipPoint", RpcTarget.Others, position, rotation);
+        _photonView.RPC("RPC_EndBrushStrokeWithBrushTipPoint", RpcTarget.OthersBuffered, position, rotation);
 
         // Organize control points when the stroke is completed to group them under a single parent
         // This is typically only done locally on the owning client.

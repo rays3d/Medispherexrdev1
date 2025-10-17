@@ -161,6 +161,8 @@ MonoBehaviour:
   - RPC_MoveBrushStrokeWithBrushTipPoint
   - RPC_UpdateBrushStrokeWithBrushTipPoint
   - AddPhotonComponents
+  - RPC_CreateControlPoint
+  - RPC_CreateControlPointsParent
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1
