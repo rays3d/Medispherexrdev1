@@ -3646,7 +3646,8 @@ public class SessionManager : MonoBehaviour
             SetModelInstanceId(model, GenerateModelInstanceId());
         }
 
-        string cacheKey = model.name.Replace("(Clone)", "");
+         string cacheKey = model.name.Replace("(Clone)", "");
+
 
         MeshFilter meshFilter = model.GetComponent<MeshFilter>();
         Renderer renderer = model.GetComponent<Renderer>();

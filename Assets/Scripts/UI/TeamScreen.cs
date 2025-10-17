@@ -355,6 +355,17 @@ public class TeamScreen : MonoBehaviourPunCallbacks
         currentPlayerObject = PhotonNetwork.Instantiate("Network Player", spawnPosition, Quaternion.identity);
         TMP_Text playerNameText = currentPlayerObject.GetComponentInChildren<TMP_Text>();
         playerNameText.text = PhotonNetwork.NickName;
+
+
+if (currentPlayerObject.GetComponent<PhotonView>().IsMine)
+{
+    playerNameText.gameObject.SetActive(false);
+}
+
+
+
+
+
         NetworkManager.instance.SetNetworkPlayer(currentPlayerObject.GetComponent<NetworkPlayer>());
     }
 
@@ -375,6 +386,17 @@ public class TeamScreen : MonoBehaviourPunCallbacks
         currentPlayerObject = PhotonNetwork.Instantiate(avatarPrefabName, spawnPosition, Quaternion.identity);
         TMP_Text playerNameText = currentPlayerObject.GetComponentInChildren<TMP_Text>();
         playerNameText.text = PhotonNetwork.NickName;
+
+
+
+if (currentPlayerObject.GetComponent<PhotonView>().IsMine)
+{
+    playerNameText.gameObject.SetActive(false);
+}
+
+
+
+
         NetworkManager.instance.SetNetworkPlayer(currentPlayerObject.GetComponent<NetworkPlayer>());
     }
 
