@@ -23,15 +23,15 @@ public class BrushStrokeMesh : MonoBehaviourPun
     [Tooltip("Number of segments around the tube circumference.")]
     [SerializeField] private int _tubeSegments = 8; // Number of segments around the tube circumference
     [Tooltip("Minimum world distance between successive ribbon points required to generate a new ring segment.")]
-    [SerializeField] private float _minDistance = 0.02f;             // Minimum distance between successive ribbon points to create a new ring
+    [SerializeField] private float _minDistance = 0.02f;  // Minimum distance between successive ribbon points to create a new ring
 
     [Header("Brush Zigzag and Connection")]
     [Tooltip("Angle offset (in degrees) for the second ring in the 'cross-ring' pair, creating a zigzag pattern for visual complexity.")]
-    [SerializeField] private float _zigzagAngle = 45f;               // Angle offset for the second ring in the "cross-ring" pair, creating a zigzag pattern
+    [SerializeField] private float _zigzagAngle = 45f; // Angle offset for the second ring in the "cross-ring" pair, creating a zigzag pattern
     [Tooltip("Ring radius for the small connecting rings between the main cross-rings.")]
-    [SerializeField] private float _connectionRingRadius = 0.015f;   // Ring radius for the connecting rings between cross-rings
+    [SerializeField] private float _connectionRingRadius = 0.015f;  // Ring radius for the connecting rings between cross-rings
     [Tooltip("Ring segments for the connecting rings.")]
-    [SerializeField] private int _connectionRingSegments = 6;        // Ring segments for connecting rings
+    [SerializeField] private int _connectionRingSegments = 6; // Ring segments for connecting rings
     [Tooltip("Tube segments for the connecting rings.")]
     [SerializeField] private int _connectionTubeSegments = 6; // Tube segments for connecting rings
 
@@ -90,10 +90,23 @@ public class BrushStrokeMesh : MonoBehaviourPun
     /// <summary>
     /// Global scale multiplier for the brush stroke geometry. Clamped to a minimum of 0.1f.
     /// </summary>
+    
     public float sizeMultiplier
     {
         get => _sizeMultiplier;
-        set => _sizeMultiplier = Mathf.Max(0.1f, value);
+        set
+        {
+            float newValue = Mathf.Max(0.1f, value);
+
+            if (Mathf.Approximately(_sizeMultiplier, newValue)) return; // No change
+            _sizeMultiplier = newValue;
+
+            // Notify other clients if this PhotonView is ours
+            if (_photonView != null && _photonView.IsMine)
+            {
+                _photonView.RPC("RPC_SetBrushSizeMultiplier", RpcTarget.OthersBuffered, _sizeMultiplier);
+            }
+        }
     }
     #endregion
 
@@ -209,17 +222,7 @@ public class BrushStrokeMesh : MonoBehaviourPun
             // 3. Create a control point associated with this new segment
             CreateControlPoint(position, finalRotation, _dotCount, startVertexIndex, _vertices.Count);
 
-            #region  RPC Calls
-            // _photonView.RPC(
-            //         "RPC_CreateControlPoint",
-            //         RpcTarget.AllBuffered,
-            //         position,
-            //         finalRotation,
-            //         _dotCount,
-            //         startVertexIndex,
-            //         _vertices.Count
-            //     );
-            #endregion
+            
             // 4. Update state variables for the next point
             _connectionPoints = currentPoints; // Store the new connection points
             _connectionDirections = currentDirections;
@@ -520,7 +523,7 @@ public class BrushStrokeMesh : MonoBehaviourPun
                 // Calculate the indices of the four corners of the quad segment
                 int current = startVertexIndex + i * (tubeSegs + 1) + j;
                 int next = current + (tubeSegs + 1); // Next segment along the ring
-                int currentNext = current + 1;       // Next segment around the tube
+                int currentNext = current + 1; // Next segment around the tube
                 int nextNext = next + 1;
 
                 // First triangle (quad split 1)
@@ -573,11 +576,12 @@ public class BrushStrokeMesh : MonoBehaviourPun
     #endregion
 
     #region  Photon RPC
+    
     [PunRPC]
-    public void RPC_CreateControlPoint(Vector3 pos, Quaternion rot, int a, int b, int c)
+    private void RPC_SetBrushSizeMultiplier(float newSize)
     {
-        Debug.Log("RPC Called - Creating Control Point");
-        CreateControlPoint(pos, rot, a, b, c);
+        _sizeMultiplier = Mathf.Max(0.1f, newSize);
+        
     }
 
     #endregion

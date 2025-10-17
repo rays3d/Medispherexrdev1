@@ -163,6 +163,11 @@ MonoBehaviour:
   - AddPhotonComponents
   - RPC_CreateControlPoint
   - RPC_CreateControlPointsParent
+  - RPC_SetBrushSizeMultiplier
+  - RPC_DeselectSphere
+  - RPC_SelectSphere
+  - RPC_SetHoverColor
+  - RPC_SetScale
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1
