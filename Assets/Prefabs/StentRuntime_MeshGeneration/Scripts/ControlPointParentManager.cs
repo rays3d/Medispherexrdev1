@@ -82,12 +82,13 @@ private void RPC_CreateControlPointsParent(int viewID)
     GameObject obj = pv.gameObject;
     obj.transform.SetParent(this.transform, true);
 
-    // 🔁 Reparent existing control points
-    foreach (Transform child in transform.Cast<Transform>().ToArray())
-    {
-        if (child.name.StartsWith("ControlPoint_"))
-            child.SetParent(obj.transform, true);
-    }
+        // 🔁 Reparent existing control points
+        foreach (Transform child in transform.Cast<Transform>().ToArray())
+        {
+            if (child.name.StartsWith("ControlPoint_"))
+                child.SetParent(obj.transform, true);
+        }
+    #region  Add Interaction
 
     // 🧱 Add Rigidbody (Network Safe)
     Rigidbody rb = obj.GetComponent<Rigidbody>();
@@ -97,9 +98,9 @@ private void RPC_CreateControlPointsParent(int viewID)
     rb.isKinematic = true;
 
     // 🤲 Add XRGrabInteractable
-    XRGrabInteractable grab = obj.GetComponent<XRGrabInteractable>();
+    XRGrabNetworkInteractable grab = obj.GetComponent<XRGrabNetworkInteractable>();
     if (grab == null)
-        grab = obj.AddComponent<XRGrabInteractable>();
+        grab = obj.AddComponent<XRGrabNetworkInteractable>();
 
     // 🎯 Make sure it uses all child colliders
     Collider[] childColliders = obj.GetComponentsInChildren<Collider>();
@@ -111,7 +112,8 @@ private void RPC_CreateControlPointsParent(int viewID)
             grab.colliders.Add(col);
     }
 
-    grab.throwOnDetach = false; // Optional: prevent throwing
+        grab.throwOnDetach = false; // Optional: prevent throwing
+    #endregion
 }
 
 
