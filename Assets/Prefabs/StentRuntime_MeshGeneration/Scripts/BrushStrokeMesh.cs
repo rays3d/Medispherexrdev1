@@ -10,45 +10,60 @@ public class BrushStrokeMesh : MonoBehaviour
     // --- Editor-Visible Configuration Parameters ---
     #region Configuration Fields
     [Header("Ring and Tube Parameters")]
-    [SerializeField] private float _ringRadius = 0.02f;              // Radius of the main circle of the ring (torus major radius)
-    [SerializeField] private float _tubeRadius = 0.003f;             // Radius of the tube along the ring (torus minor radius)
-    [SerializeField] private int _ringSegments = 16;                 // Number of segments around the main ring circumference
-    [SerializeField] private int _tubeSegments = 8;                  // Number of segments around the tube circumference
-    [SerializeField] private float _minDistance = 0.02f;             // Minimum distance between successive ribbon points to create a new ring
+    [Tooltip("Radius of the main circle of the ring (torus major radius).")]
+    [SerializeField] private float _ringRadius = 0.02f;// Radius of the main circle of the ring (torus major radius)
+    [Tooltip("Radius of the tube along the ring (torus minor radius).")]
+    [SerializeField] private float _tubeRadius = 0.003f; // Radius of the tube along the ring (torus minor radius)
+    [Tooltip("Number of segments around the main ring circumference.")]
+    [SerializeField] private int _ringSegments = 16;  // Number of segments around the main ring circumference
+    [Tooltip("Number of segments around the tube circumference.")]
+    [SerializeField] private int _tubeSegments = 8; // Number of segments around the tube circumference
+    [Tooltip("Minimum world distance between successive ribbon points required to generate a new ring segment.")]
+    [SerializeField] private float _minDistance = 0.02f;             // Minimum distance between successive ribbon points to create a new ring
 
     [Header("Brush Zigzag and Connection")]
-    [SerializeField] private float _zigzagAngle = 45f;               // Angle offset for the second ring in the "cross-ring" pair, creating a zigzag pattern
-    [SerializeField] private float _connectionRingRadius = 0.015f;   // Ring radius for the connecting rings between cross-rings
-    [SerializeField] private int _connectionRingSegments = 6;        // Ring segments for connecting rings
-    [SerializeField] private int _connectionTubeSegments = 6;        // Tube segments for connecting rings
+    [Tooltip("Angle offset (in degrees) for the second ring in the 'cross-ring' pair, creating a zigzag pattern for visual complexity.")]
+    [SerializeField] private float _zigzagAngle = 45f;               // Angle offset for the second ring in the "cross-ring" pair, creating a zigzag pattern
+    [Tooltip("Ring radius for the small connecting rings between the main cross-rings.")]
+    [SerializeField] private float _connectionRingRadius = 0.015f;   // Ring radius for the connecting rings between cross-rings
+    [Tooltip("Ring segments for the connecting rings.")]
+    [SerializeField] private int _connectionRingSegments = 6;        // Ring segments for connecting rings
+    [Tooltip("Tube segments for the connecting rings.")]
+    [SerializeField] private int _connectionTubeSegments = 6; // Tube segments for connecting rings
 
     [Header("Control Point Interaction")]
-    [SerializeField] private Material _controlPointMat = null;       // Material for the control point spheres
-    [SerializeField] private GameObject _controlPointPrefab = null;   // Prefab for the interactive control points
-    [SerializeField] private float _controlPointScale = 0.01f;       // Initial scale for control point GameObjects
-    [SerializeField] private int _adjacentInfluenceCount = 4;        // Number of adjacent rings a control point's scale change will influence
-    [SerializeField] private bool _ignoreControllerRotation = true;   // If true, the ring rotation is derived from the stroke direction, ignoring input rotation
+    [Tooltip("Material to be applied to the control point spheres.")]
+    [SerializeField] private Material _controlPointMat = null;  // Material for the control point spheres
+    [Tooltip("Prefab for the interactive control points (optional, falls back to a default sphere).")]
+    [SerializeField] private GameObject _controlPointPrefab = null; // Prefab for the interactive control points
+    [Tooltip("Initial scale of the control point GameObjects.")]
+    [SerializeField] private float _controlPointScale = 0.01f;  // Initial scale for control point GameObjects
+    [Tooltip("Number of segments an adjacent control point's scale change will influence.")]
+    [SerializeField] private int _adjacentInfluenceCount = 4; // Number of adjacent rings a control point's scale change will influence
+    [Tooltip("If true, the ring rotation is derived from the stroke direction (movement vector), ignoring the raw input rotation.")]
+    [SerializeField] private bool _ignoreControllerRotation = true;  // If true, the ring rotation is derived from the stroke direction, ignoring input rotation
 
     [Header("Size Scaling")]
-    [SerializeField] private float _sizeMultiplier = 1.0f;           // Global scale multiplier for all geometric elements
+    [Tooltip("Global multiplier for all geometric elements (ring radius, tube radius, etc.).")]
+    [SerializeField] private float _sizeMultiplier = 1.0f; // Global scale multiplier for all geometric elements
     #endregion
 
     // --- Mesh Data Storage ---
     #region Mesh Data
-    private Mesh _mesh;                                              // The generated Unity Mesh
-    private List<Vector3> _vertices = new List<Vector3>();           // List of all mesh vertices
-    private List<int> _triangles = new List<int>();                 // List of all mesh triangle indices
-    private List<Vector3> _normals = new List<Vector3>();           // List of all mesh normals
+    private Mesh _mesh; // The generated Unity Mesh object reference
+    private List<Vector3> _vertices = new List<Vector3>(); // List of all mesh vertices
+    private List<int> _triangles = new List<int>();  // List of all mesh triangle indices
+    private List<Vector3> _normals = new List<Vector3>();  // List of all mesh normals
     #endregion
 
     // --- Stroke Tracking State ---
     #region Stroke State
-    private Vector3 _lastRingPosition;                               // Position of the last successfully created ring
-    private Quaternion _lastRingRotation = Quaternion.identity;      // Rotation of the last successfully created ring
-    private bool _hasLastPosition = false;                           // Flag to track if the first point has been recorded
-    private int _dotCount = 0;                                       // Counter for the number of successful cross-rings created (used for indexing)
+    private Vector3 _lastRingPosition;  // Position of the last successfully created ring
+    private Quaternion _lastRingRotation = Quaternion.identity; // Rotation of the last successfully created ring
+    private bool _hasLastPosition = false;  // Flag to track if the first point has been recorded
+    private int _dotCount = 0;  // Counter for the number of successful cross-rings created (used for indexing)
 
-    private List<Vector3> _connectionPoints = new List<Vector3>();   // Points on the last cross-ring used to start connection rings
+    private List<Vector3> _connectionPoints = new List<Vector3>();  // Points on the last cross-ring used to start connection rings
     private List<Vector3> _connectionDirections = new List<Vector3>(); // Directions corresponding to connectionPoints
     #endregion
 
@@ -66,8 +81,8 @@ public class BrushStrokeMesh : MonoBehaviour
     }
     #endregion
 
-    // --- Public Properties ---
     #region Public Properties
+    // --- Public Properties ---
     /// <summary>
     /// Global scale multiplier for the brush stroke geometry. Clamped to a minimum of 0.1f.
     /// </summary>
@@ -85,11 +100,11 @@ public class BrushStrokeMesh : MonoBehaviour
     /// </summary>
     private class ControlPoint
     {
-        public GameObject gameObject;                     // The Unity GameObject (e.g., sphere) for manipulation
-        public Vector3 originalPosition;                 // Position when the point was created
-        public Quaternion originalRotation;               // Rotation when the point was created
-        public Vector3 initialScale;                     // Initial local scale of the GameObject
-        public int crossRingIndex;                       // Index of the brush stroke segment this point corresponds to
+        public GameObject gameObject;                     // The Unity GameObject (e.g., sphere) for manipulation
+        public Vector3 originalPosition;                 // Position when the point was created
+        public Quaternion originalRotation;               // Rotation when the point was created
+        public Vector3 initialScale;                     // Initial local scale of the GameObject
+        public int crossRingIndex;                       // Index of the brush stroke segment this point corresponds to
         public List<int> affectedVertexIndices = new List<int>(); // Indices of vertices belonging to this segment
         public List<Vector3> originalVertexOffsets = new List<Vector3>(); // Local offset from the control point's center to each affected vertex
     }
@@ -132,12 +147,12 @@ public class BrushStrokeMesh : MonoBehaviour
         {
             if (!_hasLastPosition)
             {
-                // First point: use forward direction from controller/input
+                // First point: use forward direction from controller/input as a placeholder
                 finalRotation = Quaternion.LookRotation(rotation * Vector3.forward, Vector3.up);
             }
             else
             {
-                // Subsequent points: align with the direction of movement
+                // Subsequent points: align with the direction of movement (tangent to the stroke)
                 Vector3 direction = (position - _lastRingPosition).normalized;
                 if (direction.magnitude > 0.01f)
                     finalRotation = Quaternion.LookRotation(direction, Vector3.up);
@@ -158,17 +173,17 @@ public class BrushStrokeMesh : MonoBehaviour
         float distance = Vector3.Distance(position, _lastRingPosition);
         float scaledMinDistance = _minDistance * _sizeMultiplier;
 
-        // Check if the distance threshold has been reached
+        // Check if the distance threshold has been reached (prevents over-sampling and excessive geometry)
         if (distance >= scaledMinDistance)
         {
             List<Vector3> currentPoints;
             List<Vector3> currentDirections;
             int startVertexIndex = _vertices.Count;
 
-            // 1. Create the new cross-ring geometry
+            // 1. Create the new cross-ring geometry (main segment)
             CreateCrossRings(position, finalRotation, out currentPoints, out currentDirections);
 
-            // 2. Connect the previous cross-ring to the new one
+            // 2. Connect the previous cross-ring to the new one with small connecting rings
             if (_connectionPoints.Count == currentPoints.Count)
             {
                 for (int i = 0; i < _connectionPoints.Count; i++)
@@ -182,7 +197,7 @@ public class BrushStrokeMesh : MonoBehaviour
             CreateControlPoint(position, finalRotation, _dotCount, startVertexIndex, _vertices.Count);
 
             // 4. Update state variables for the next point
-            _connectionPoints = currentPoints;
+            _connectionPoints = currentPoints; // Store the new connection points
             _connectionDirections = currentDirections;
             _lastRingPosition = position;
             _lastRingRotation = finalRotation;
@@ -204,6 +219,7 @@ public class BrushStrokeMesh : MonoBehaviour
     /// </summary>
     public void ClearRibbon()
     {
+        // Clear all internal list data
         _vertices.Clear();
         _normals.Clear();
         _triangles.Clear();
@@ -234,6 +250,7 @@ public class BrushStrokeMesh : MonoBehaviour
     #region Control Point Management
     /// <summary>
     /// Creates a visual control point GameObject and stores its associated data.
+    /// This point is what the user interacts with to deform the mesh segment.
     /// </summary>
     private void CreateControlPoint(Vector3 position, Quaternion rotation, int index, int startVertexIndex, int endVertexIndex)
     {
@@ -247,16 +264,23 @@ public class BrushStrokeMesh : MonoBehaviour
         }
         else
         {
+            // Default Primitive creation logic
             cpObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             cpObject.transform.position = position;
             cpObject.transform.rotation = rotation;
             cpObject.transform.parent = transform;
-            cpObject.transform.GetComponent<Renderer>().material = _controlPointMat;
+            
+            // Set material and remove collider for cleaner interaction if necessary
+            Renderer renderer = cpObject.transform.GetComponent<Renderer>();
+            if (renderer != null) renderer.material = _controlPointMat;
+
+            Collider collider = cpObject.transform.GetComponent<Collider>();
+            if (collider != null) Destroy(collider); // Often removed for custom interaction logic
         }
 
         cpObject.name = "ControlPoint_" + index;
         cpObject.transform.localScale = Vector3.one * scaledControlPointSize;
-      
+        
 
         // Store the ControlPoint data
         ControlPoint cp = new ControlPoint
@@ -272,6 +296,7 @@ public class BrushStrokeMesh : MonoBehaviour
         for (int i = startVertexIndex; i < endVertexIndex; i++)
         {
             cp.affectedVertexIndices.Add(i);
+            // Store the offset vector relative to the control point's center
             cp.originalVertexOffsets.Add(_vertices[i] - position);
         }
         _controlPoints.Add(cp);
@@ -284,6 +309,7 @@ public class BrushStrokeMesh : MonoBehaviour
     private void UpdateMeshFromControlPoints()
     {
         bool meshChanged = false;
+        // Clear the accumulated scales map for a fresh calculation this frame
         _accumulatedScales.Clear();
 
         // Phase 1: Calculate the accumulated scale influence across adjacent control points
@@ -296,6 +322,7 @@ public class BrushStrokeMesh : MonoBehaviour
             // Calculate the scaling factor relative to the original size
             float scaleFactor = currentScale.x / cp.initialScale.x;
 
+            // Check if scaling has occurred
             if (Mathf.Abs(scaleFactor - 1f) > 0.001f)
             {
                 // Distribute the scale change to adjacent control points
@@ -304,7 +331,7 @@ public class BrushStrokeMesh : MonoBehaviour
                     int targetIndex = cpIndex + offset;
                     if (targetIndex >= 0 && targetIndex < _controlPoints.Count)
                     {
-                        // Linear influence falloff
+                        // Linear influence falloff based on distance from the control point
                         float influence = 1f - (Mathf.Abs(offset) / (float)(_adjacentInfluenceCount + 1));
                         float adjacentScale = 1f + (scaleFactor - 1f) * influence;
 
@@ -328,6 +355,7 @@ public class BrushStrokeMesh : MonoBehaviour
             Quaternion currentRot = cp.gameObject.transform.rotation;
 
             Vector3 positionDelta = currentPos - cp.originalPosition;
+            // Calculate the delta rotation required to move from original to current rotation
             Quaternion rotationDelta = currentRot * Quaternion.Inverse(cp.originalRotation);
 
             // Get the final scale factor for this point, applying the accumulated maximum
@@ -347,18 +375,21 @@ public class BrushStrokeMesh : MonoBehaviour
                     if (vertexIndex < _vertices.Count)
                     {
                         Vector3 localVertex = cp.originalVertexOffsets[i];
-                        // Apply rotation delta
+                        
+                        // 1. Apply rotation delta to the original offset
                         localVertex = rotationDelta * localVertex;
-                        // Apply scale factor
+                        
+                        // 2. Apply scale factor (modifies the radius of the stroke)
                         localVertex *= finalScaleFactor;
-                        // Calculate new world position: original position + transformed local offset + position delta
+                        
+                        // 3. Calculate new world position: original position + transformed local offset + position delta
                         _vertices[vertexIndex] = cp.originalPosition + localVertex + positionDelta;
                     }
                 }
             }
         }
 
-        // Phase 3: Update the actual mesh with the new vertex positions
+        // Phase 3: Update the actual mesh with the new vertex positions if a change was detected
         if (meshChanged)
             UpdateGeometry();
     }
@@ -382,10 +413,10 @@ public class BrushStrokeMesh : MonoBehaviour
         CreateRing(center, rot0, scaledRingRadius, _ringSegments, _tubeSegments);
 
         // Store points for connection 1: Top, Bottom, Left, Right points of the ring
-        connectionPoints.Add(center + rot0 * new Vector3(0, scaledRingRadius, 0));
-        connectionPoints.Add(center + rot0 * new Vector3(0, -scaledRingRadius, 0));
-        connectionPoints.Add(center + rot0 * new Vector3(-scaledRingRadius, 0, 0));
-        connectionPoints.Add(center + rot0 * new Vector3(scaledRingRadius, 0, 0));
+        connectionPoints.Add(center + rot0 * new Vector3(0, scaledRingRadius, 0)); // Top
+        connectionPoints.Add(center + rot0 * new Vector3(0, -scaledRingRadius, 0)); // Bottom
+        connectionPoints.Add(center + rot0 * new Vector3(-scaledRingRadius, 0, 0)); // Left
+        connectionPoints.Add(center + rot0 * new Vector3(scaledRingRadius, 0, 0)); // Right
 
         // Store corresponding directions (outward normals)
         connectionDirections.Add(rot0 * new Vector3(0, 1, 0));
@@ -412,6 +443,7 @@ public class BrushStrokeMesh : MonoBehaviour
 
     /// <summary>
     /// Generates the geometry for a single toroidal ring (donut shape) at a specified location.
+    /// This is the low-level mesh generation function.
     /// </summary>
     private void CreateRing(Vector3 center, Quaternion rotation, float ringRadius, int ringSegs, int tubeSegs)
     {
@@ -419,14 +451,15 @@ public class BrushStrokeMesh : MonoBehaviour
         float scaledTubeRadius = _tubeRadius * _sizeMultiplier;
 
         // 1. Generate Vertices and Normals
-        for (int i = 0; i <= ringSegs; i++) // Around the main ring
+        for (int i = 0; i <= ringSegs; i++) // Iterate around the main ring (major circumference)
         {
             float ringAngle = 2 * Mathf.PI * i / ringSegs;
             float ringX = ringRadius * Mathf.Cos(ringAngle);
             float ringY = ringRadius * Mathf.Sin(ringAngle);
-            Vector3 ringCenter = new Vector3(ringX, ringY, 0); // Center of the tube cross-section in local space
+            // Center of the tube cross-section in local space (Z-axis is the stroke direction)
+            Vector3 ringCenter = new Vector3(ringX, ringY, 0); 
 
-            for (int j = 0; j <= tubeSegs; j++) // Around the tube cross-section
+            for (int j = 0; j <= tubeSegs; j++) // Iterate around the tube cross-section (minor circumference)
             {
                 float tubeAngle = 2 * Mathf.PI * j / tubeSegs;
 
@@ -439,11 +472,12 @@ public class BrushStrokeMesh : MonoBehaviour
 
                 // Calculate local vertex position (ring center + scaled tube radius * tube direction)
                 Vector3 localVertex = ringCenter + tubeDirection * scaledTubeRadius;
-                // Transform local vertex to world space
+                
+                // Transform local vertex to world space relative to the mesh component
                 Vector3 vertex = center + rotation * localVertex;
                 
                 // The normal is the rotated tube direction (outward from the tube)
-                Vector3 normal = rotation * tubeDirection;
+                Vector3 normal = rotation * tubeDirection.normalized; // Normal should always be normalized
 
                 _vertices.Add(vertex);
                 _normals.Add(normal);
@@ -455,18 +489,18 @@ public class BrushStrokeMesh : MonoBehaviour
         {
             for (int j = 0; j < tubeSegs; j++)
             {
-                // Indices for the four corners of a quad
+                // Calculate the indices of the four corners of the quad segment
                 int current = startVertexIndex + i * (tubeSegs + 1) + j;
                 int next = current + (tubeSegs + 1); // Next segment along the ring
-                int currentNext = current + 1;       // Next segment around the tube
+                int currentNext = current + 1;       // Next segment around the tube
                 int nextNext = next + 1;
 
-                // First triangle (current, next, currentNext)
+                // First triangle (quad split 1)
                 _triangles.Add(current);
                 _triangles.Add(next);
                 _triangles.Add(currentNext);
 
-                // Second triangle (currentNext, next, nextNext)
+                // Second triangle (quad split 2) - creates the smooth surface
                 _triangles.Add(currentNext);
                 _triangles.Add(next);
                 _triangles.Add(nextNext);
@@ -480,12 +514,13 @@ public class BrushStrokeMesh : MonoBehaviour
     private void CreateConnectionRing(Vector3 start, Vector3 end, Vector3 perpendicularDirection)
     {
         Vector3 center = (start + end) / 2f;
+        // Direction from start point to end point (the local Z-axis of the connector)
         Vector3 connectionDirection = (end - start).normalized;
 
         // Determine the 'up' vector for rotation: must be perpendicular to both the connection direction and the provided 'perpendicularDirection'
         Vector3 up = Vector3.Cross(perpendicularDirection, connectionDirection).normalized;
 
-        // Determine rotation: Look along 'perpendicularDirection', with 'up' as the roll orientation
+        // Determine rotation: Look along 'perpendicularDirection' (to align the ring), with 'up' as the roll orientation
         Quaternion rotation = Quaternion.LookRotation(perpendicularDirection, up);
 
         float scaledConnectionRingRadius = _connectionRingRadius * _sizeMultiplier;
@@ -496,6 +531,7 @@ public class BrushStrokeMesh : MonoBehaviour
 
     /// <summary>
     /// Clears and updates the Mesh component with the current vertex, normal, and triangle data.
+    /// This should be called once per frame or per geometry update to apply changes to the GPU.
     /// </summary>
     private void UpdateGeometry()
     {
@@ -503,7 +539,8 @@ public class BrushStrokeMesh : MonoBehaviour
         _mesh.SetVertices(_vertices);
         _mesh.SetNormals(_normals);
         _mesh.SetTriangles(_triangles, 0);
-        _mesh.RecalculateBounds(); // Necessary for proper rendering and culling
+        // Recalculate bounds is critical after modifying vertices, especially for culling and shadows.
+        _mesh.RecalculateBounds(); 
     }
     #endregion
 }

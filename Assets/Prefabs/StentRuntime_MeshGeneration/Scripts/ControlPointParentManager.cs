@@ -61,7 +61,7 @@ public class ControlPointParentManager : MonoBehaviour
             cp.SetParent(_controlPointsParent.transform, true);
         }
 
-        // ✅ Add grab functionality in separate method
+        //  Add grab functionality in separate method
         AddGrabComponents(_controlPointsParent);
     }
 
@@ -72,22 +72,22 @@ public class ControlPointParentManager : MonoBehaviour
         /// </summary>
     private void AddGrabComponents(GameObject obj)
 {
-    // ✅ Capsule Collider
+    //  Capsule Collider
     //Collider capCol = obj.AddComponent<MeshCollider>();
     // capCol.center = Vector3.zero;
     // capCol.radius = 0.02f;
     // capCol.height = 0.1f;
 
-    // ✅ Rigidbody
+    //  Rigidbody
     Rigidbody rb = obj.AddComponent<Rigidbody>();
     rb.useGravity = false;
-    rb.isKinematic = true;   // ✅ Object will NOT move on collisions
+    rb.isKinematic = true;   //  Object will NOT move on collisions
     // ❗ Don't freeze rotation → allow manual rotation
 
-    // ✅ XR Grab Interactable
+    //  XR Grab Interactable
     var grab = obj.AddComponent<UnityEngine.XR.Interaction.Toolkit.XRGrabInteractable>();
     grab.trackPosition = true;
-   // grab.trackRotation = false;   // ✅ No snapping to controller
+   // grab.trackRotation = false;   //  No snapping to controller
     //grab.throwOnDetach = false;
 
     // 🔒 Fixed Attach Point - Prevent snap rotation
