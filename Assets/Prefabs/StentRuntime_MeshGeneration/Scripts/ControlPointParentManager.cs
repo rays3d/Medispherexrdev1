@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Photon.Pun;
 using UnityEngine;
+using UnityEngine.XR.Interaction.Toolkit;
 
 public class ControlPointParentManager : MonoBehaviour
 {
@@ -42,7 +43,7 @@ public class ControlPointParentManager : MonoBehaviour
     /// </summary>
     public void OrganizeControlPoints()
     {
-        // Find all control point objects (assuming they start with "ControlPoint_")
+        // 1️⃣ Collect control points
         List<Transform> controlPoints = new List<Transform>();
         foreach (Transform child in transform)
         {
@@ -52,64 +53,67 @@ public class ControlPointParentManager : MonoBehaviour
 
         if (controlPoints.Count == 0) return;
 
-        // Calculate center position
+        // 2️⃣ Calculate center
         Vector3 centerPosition = CalculateCenterPosition(controlPoints);
 
-        // Call RPC to create parent and reparent on all clients
-        _photonView = GetComponent<PhotonView>();
-        if (_photonView != null)
-        {
-            _photonView.RPC("RPC_CreateControlPointsParent", RpcTarget.AllBuffered, centerPosition);
-        }
+        // 3️⃣ Instantiate parent over network (only once - owner only)
+        GameObject parent = PhotonNetwork.Instantiate(
+            "Tools/ControlPointParent",
+            centerPosition,
+            Quaternion.identity
+        );
+
+        _controlPointsParent = parent;
+
+        // 4️⃣ Send parent ViewID to all clients via RPC
+        PhotonView parentView = parent.GetComponent<PhotonView>();
+        PhotonView thisView = GetComponent<PhotonView>();
+
+        thisView.RPC("RPC_CreateControlPointsParent", RpcTarget.AllBuffered, parentView.ViewID);
+
     }
 
     [PunRPC]
-    private void RPC_CreateControlPointsParent(Vector3 position)
+private void RPC_CreateControlPointsParent(int viewID)
+{
+    PhotonView pv = PhotonView.Find(viewID);
+    if (pv == null) return;
+
+    GameObject obj = pv.gameObject;
+    obj.transform.SetParent(this.transform, true);
+
+    // 🔁 Reparent existing control points
+    foreach (Transform child in transform.Cast<Transform>().ToArray())
     {
-        if (_controlPointsParent != null) return;
-
-        // ✅ Spawn over network
-        GameObject parent = PhotonNetwork.Instantiate(
-            "Tools/ControlPointParent",
-            position,
-            Quaternion.identity
-        );
-        
-        _controlPointsParent = parent;
-
-        // Reparent existing control points
-        foreach (Transform child in transform.Cast<Transform>().ToArray())
-        {
-            if (child.name.StartsWith("ControlPoint_"))
-                child.SetParent(_controlPointsParent.transform, true);
-        }
-        AddGrabComponents(parent);
+        if (child.name.StartsWith("ControlPoint_"))
+            child.SetParent(obj.transform, true);
     }
 
-    private void AddGrabComponents(GameObject obj)
+    // 🧱 Add Rigidbody (Network Safe)
+    Rigidbody rb = obj.GetComponent<Rigidbody>();
+    if (rb == null)
+        rb = obj.AddComponent<Rigidbody>();
+    rb.useGravity = false;
+    rb.isKinematic = true;
+
+    // 🤲 Add XRGrabInteractable
+    XRGrabInteractable grab = obj.GetComponent<XRGrabInteractable>();
+    if (grab == null)
+        grab = obj.AddComponent<XRGrabInteractable>();
+
+    // 🎯 Make sure it uses all child colliders
+    Collider[] childColliders = obj.GetComponentsInChildren<Collider>();
+    grab.colliders.Clear();
+
+    foreach (Collider col in childColliders)
     {
-        if (obj.GetComponent<Rigidbody>() == null)
-        {
-            Rigidbody rb = obj.AddComponent<Rigidbody>();
-            rb.useGravity = false;
-            rb.isKinematic = true;
-        }
-
-        var grab = obj.GetComponent<UnityEngine.XR.Interaction.Toolkit.XRGrabInteractable>();
-        if (grab == null)
-        {
-            grab = obj.AddComponent<UnityEngine.XR.Interaction.Toolkit.XRGrabInteractable>();
-            grab.trackPosition = true;
-
-            Transform attachPoint = new GameObject("AttachPoint").transform;
-            attachPoint.SetParent(obj.transform, false);
-            attachPoint.localPosition = Vector3.zero;
-            attachPoint.localRotation = Quaternion.identity;
-            grab.attachTransform = attachPoint;
-
-            obj.AddComponent<Deletable>();
-        }
+        if (!grab.colliders.Contains(col))
+            grab.colliders.Add(col);
     }
+
+    grab.throwOnDetach = false; // Optional: prevent throwing
+}
+
 
     private Vector3 CalculateCenterPosition(List<Transform> controlPoints)
     {
