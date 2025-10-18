@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Photon.Pun;
 using UnityEngine;
-using UnityEngine.XR.Interaction.Toolkit;
 
 public class ControlPointParentManager : MonoBehaviour
 {
@@ -73,7 +72,8 @@ public class ControlPointParentManager : MonoBehaviour
 
     }
 
-    [PunRPC]
+    
+[PunRPC]
 private void RPC_CreateControlPointsParent(int viewID)
 {
     PhotonView pv = PhotonView.Find(viewID);

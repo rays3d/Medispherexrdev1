@@ -43,7 +43,7 @@ public class BrushStroke : MonoBehaviour
             // If the mesh component doesn't exist, create a new child GameObject for it
             GameObject meshObject = new GameObject("BrushStrokeMesh");
             meshObject.transform.SetParent(transform);
-            
+
             // Add the component responsible for geometry generation.
             _brushStrokeMesh = meshObject.AddComponent<BrushStrokeMesh>();
 
@@ -68,6 +68,7 @@ public class BrushStroke : MonoBehaviour
     }
     #endregion
 
+  
     #region Core Logic - Public Drawing Methods
     // --- Public Stroke Drawing Methods ---
 
@@ -255,5 +256,6 @@ public class BrushStroke : MonoBehaviour
             _brushStrokeMesh.UpdateLastRibbonPoint(position, rotation);
         }
     }
+   
     #endregion
 }

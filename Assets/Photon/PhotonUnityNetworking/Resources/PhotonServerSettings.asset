@@ -168,6 +168,8 @@ MonoBehaviour:
   - RPC_SelectSphere
   - RPC_SetHoverColor
   - RPC_SetScale
+  - RPC_DeleteBrushStroke
+  - RPC_DestroyStent
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

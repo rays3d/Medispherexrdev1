@@ -11,7 +11,8 @@ GameObject:
   - component: {fileID: 753827448363639280}
   - component: {fileID: 6424476718900791043}
   - component: {fileID: 2451225487932313033}
-  - component: {fileID: 4884355925489261969}
+  - component: {fileID: 8667867554449991939}
+  - component: {fileID: 3053219906726610266}
   m_Layer: 0
   m_Name: ControlPointParent
   m_TagString: Untagged
@@ -54,7 +55,6 @@ MonoBehaviour:
   observableSearch: 2
   ObservedComponents:
   - {fileID: 2451225487932313033}
-  - {fileID: 4884355925489261969}
   sceneViewId: 0
   InstantiationId: 0
   isRuntimeInstantiated: 0
@@ -74,7 +74,28 @@ MonoBehaviour:
   m_SynchronizeRotation: 1
   m_SynchronizeScale: 1
   m_UseLocal: 0
---- !u!114 &4884355925489261969
+--- !u!65 &8667867554449991939
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2989868057574323729}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.1, y: 0.1, z: 0.1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &3053219906726610266
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -83,43 +104,6 @@ MonoBehaviour:
   m_GameObject: {fileID: 2989868057574323729}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8d01f7cf35bcb6e49bd8bf68c97a4a4d, type: 3}
+  m_Script: {fileID: 11500000, guid: 1933d782da6490a468cde81f12e1eaf9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  partID: 0
-  colors:
-  - {r: 1, g: 1, b: 1, a: 1}
-  - {r: 1, g: 0, b: 0, a: 1}
-  - {r: 0, g: 0, b: 1, a: 1}
-  - {r: 0, g: 1, b: 0, a: 1}
-  - {r: 0.5, g: 0.5, b: 0.5, a: 1}
-  - {r: 1, g: 0, b: 1, a: 1}
-  - {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  - {r: 0, g: 1, b: 1, a: 1}
-  changeColor:
-    m_UseReference: 1
-    m_Action:
-      m_Name: Change Color
-      m_Type: 0
-      m_ExpectedControlType: 
-      m_Id: 8ed57634-8878-4fd0-8e3b-9283e76ec3e1
-      m_Processors: 
-      m_Interactions: 
-      m_SingletonActionBindings: []
-      m_Flags: 0
-    m_Reference: {fileID: -5431609864909813325, guid: c348712bda248c246b8c49b3db54643f,
-      type: 3}
-  deleteButton:
-    m_UseReference: 1
-    m_Action:
-      m_Name: Delete Button
-      m_Type: 0
-      m_ExpectedControlType: 
-      m_Id: e5da7b0f-4fd4-434a-b9c8-3fd74ac21ce0
-      m_Processors: 
-      m_Interactions: 
-      m_SingletonActionBindings: []
-      m_Flags: 0
-    m_Reference: {fileID: -386186365443156096, guid: c348712bda248c246b8c49b3db54643f,
-      type: 3}
-  currentColorIndex: 0

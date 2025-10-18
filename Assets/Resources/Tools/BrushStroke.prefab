@@ -14,7 +14,6 @@ GameObject:
   - component: {fileID: 114757252374765478}
   - component: {fileID: 4468714931278076659}
   - component: {fileID: 1976421689304958792}
-  - component: {fileID: 4658012725525969906}
   m_Layer: 0
   m_Name: Mesh
   m_TagString: Untagged
@@ -153,31 +152,6 @@ MonoBehaviour:
   sceneViewId: 0
   InstantiationId: 0
   isRuntimeInstantiated: 0
---- !u!114 &4658012725525969906
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1180682106015612}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 568d1a7325a62b840ae6907b37d7bbbd, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  deleteButton:
-    m_UseReference: 1
-    m_Action:
-      m_Name: Delete Button
-      m_Type: 0
-      m_ExpectedControlType: 
-      m_Id: d4477c6a-5e47-47d3-95d1-ebb165bd88fc
-      m_Processors: 
-      m_Interactions: 
-      m_SingletonActionBindings: []
-      m_Flags: 0
-    m_Reference: {fileID: -386186365443156096, guid: c348712bda248c246b8c49b3db54643f,
-      type: 3}
 --- !u!1 &1196413553089462
 GameObject:
   m_ObjectHideFlags: 0

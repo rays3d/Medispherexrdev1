@@ -85,6 +85,8 @@ public class BrushStrokeMesh : MonoBehaviourPun
     }
     #endregion
 
+   
+    
     #region Public Properties
     // --- Public Properties ---
     /// <summary>
@@ -583,6 +585,6 @@ public class BrushStrokeMesh : MonoBehaviourPun
         _sizeMultiplier = Mathf.Max(0.1f, newSize);
         
     }
-
+   
     #endregion
 }
