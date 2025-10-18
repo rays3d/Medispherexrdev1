@@ -3,40 +3,57 @@ using UnityEngine;
 
 public class StentErasor : MonoBehaviour
 {
-    private void OnTriggerEnter(Collider other)
+
+private PhotonView rootPV;
+public GameObject rootReference { get; private set; }
+
+// Call this from another script after parenting is finalized
+    public void SetRootReference(GameObject root)
     {
-        if (other.gameObject.CompareTag("Eraser"))
-        {
-            Debug.Log("⚠ Eraser collided with stent part: " + other.gameObject.name);
+        if (root == null) return;
 
-            GameObject root = GetRootWithPhotonView(transform.gameObject);
-            PhotonView pv = root.GetComponent<PhotonView>();
+        rootReference = root;
+        rootPV = root.GetComponent<PhotonView>();
 
-            if (pv != null && pv.IsMine)
-            {
-                PhotonNetwork.Destroy(root);
-            }
-            else if (pv != null) // Request owner to destroy
-            {
-                pv.RPC("RPC_DestroyStent", RpcTarget.AllBuffered);
-            }
-        }
+        if (rootPV == null)
+            Debug.LogWarning("⚠ Assigned root has no PhotonView! Deletion may not sync over network.");
     }
 
-    // Finds top object that has the PhotonView
-    private GameObject GetRootWithPhotonView(GameObject obj)
+
+    private void OnTriggerEnter(Collider other)
     {
-        Transform current = obj.transform;
-        while (current.parent != null)
-            current = current.parent;
-        return current.gameObject;
+        if (other.CompareTag("Eraser"))
+        {
+            if (rootReference != null)
+            {
+                if (rootPV != null && rootPV.IsMine)
+                    PhotonNetwork.Destroy(rootReference);
+                else if (rootPV != null)
+                    rootPV.RPC(nameof(RPC_DestroyStent), RpcTarget.AllBuffered);
+            }
+
+            Destroy(gameObject); // Destroy the eraser locally
+        }
     }
 
     [PunRPC]
     private void RPC_DestroyStent()
     {
-        GameObject root = GetRootWithPhotonView(gameObject);
-        if (root != null)
-            Destroy(root);
+        if (rootReference != null)
+            Destroy(rootReference);
     }
+
+    private void OnDestroy()
+{
+    // Just in case the root still exists locally, destroy it (owner only)
+    if (rootPV != null && rootPV.IsMine && rootReference != null)
+    {
+        PhotonNetwork.Destroy(rootReference);
+    }
+
+    // Clear cached references
+    rootReference = null;
+    rootPV = null;
+}
+
 }

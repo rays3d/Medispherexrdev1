@@ -125,7 +125,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d60f9eaabbd39749b1bd16d06563fef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  parentObjectName: ControlPointsParent
   createParentOnStrokeEnd: 1
   showParentGizmo: 1
   gizmoColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
