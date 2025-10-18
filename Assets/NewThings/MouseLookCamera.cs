@@ -2,23 +2,57 @@ using UnityEngine;
 
 public class MouseLookCamera : MonoBehaviour
 {
+    [Header("Look Settings")]
     public float sensitivity = 2f;
-    public float moveSpeed = 5f;
+    public float smoothSpeed = 10f;
 
-    float rotationX = 0f;
-    float rotationY = 0f;
+    [Header("Move Settings")]
+    public float moveSpeed = 5f;
+    public float scrollSpeed = 50f;
+    public float verticalMoveSpeed = 5f; // for Q/E up-down movement
+
+    private float rotationY; // only horizontal rotation
+    private Vector3 currentVelocity;
 
     void Update()
     {
-        if (Input.GetMouseButton(0)) // Hold right mouse button to look
-        {
-            rotationX += Input.GetAxis("Mouse X") * sensitivity;
-            rotationY -= Input.GetAxis("Mouse Y") * sensitivity;
-            rotationY = Mathf.Clamp(rotationY, -80f, 80f);
-            transform.rotation = Quaternion.Euler(rotationY, rotationX, 0f);
-        }
+        HandleRotation();
+        HandleMovement();
+    }
 
-        Vector3 move = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
-        transform.Translate(move * moveSpeed * Time.deltaTime);
+    void HandleRotation()
+    {
+        if (Input.GetMouseButton(0)) // Hold Left Mouse Button
+        {
+            rotationY += Input.GetAxis("Mouse X") * sensitivity;
+            Quaternion targetRotation = Quaternion.Euler(0f, rotationY, 0f);
+            transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, Time.deltaTime * smoothSpeed);
+        }
+    }
+
+    void HandleMovement()
+    {
+        // Horizontal plane movement (WASD)
+        float horizontal = Input.GetAxis("Horizontal"); // A/D
+        float vertical = Input.GetAxis("Vertical");     // W/S
+
+        Vector3 move = (transform.forward * vertical + transform.right * horizontal).normalized;
+
+        // Vertical movement (Q/E)
+        float upDown = 0f;
+        if (Input.GetKey(KeyCode.E)) upDown += 1f;
+        if (Input.GetKey(KeyCode.Q)) upDown -= 1f;
+        Vector3 verticalMove = Vector3.up * upDown * verticalMoveSpeed;
+
+        // Scroll forward/back
+        float scroll = Input.GetAxis("Mouse ScrollWheel");
+        Vector3 scrollMove = transform.forward * scroll * scrollSpeed;
+
+        // Combine all movement
+        Vector3 targetVelocity = (move * moveSpeed) + verticalMove + scrollMove;
+
+        // Smooth movement
+        currentVelocity = Vector3.Lerp(currentVelocity, targetVelocity, Time.deltaTime * smoothSpeed);
+        transform.position += currentVelocity * Time.deltaTime;
     }
 }
