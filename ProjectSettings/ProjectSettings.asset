@@ -162,7 +162,7 @@ PlayerSettings:
   androidSupportedAspectRatio: 1
   androidMaxAspectRatio: 2.1
   applicationIdentifier:
-    Android: com.Rays.RaysXRLabs3d_presentation
+    Android: com.Rays3d.MediSphereXR_Test_Stent
     Standalone: com.Rays3d.MediSphereXR
     iPhone: com.Unity-Technologies.com.unity.template.urp-blank
   buildNumber:
@@ -265,7 +265,7 @@ PlayerSettings:
   AndroidTargetDevices: 0
   AndroidSplashScreenScale: 0
   androidSplashScreen: {fileID: 0}
-  AndroidKeystoreName: '{dedicated}: rays.keystore'
+  AndroidKeystoreName: '{inproject}: keystore/rays.keystore'
   AndroidKeyaliasName: rays
   AndroidEnableArmv9SecurityFeatures: 0
   AndroidBuildApkPerCpuArchitecture: 0

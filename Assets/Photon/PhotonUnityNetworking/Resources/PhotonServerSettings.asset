@@ -156,22 +156,20 @@ MonoBehaviour:
   - RPC_StartStroke
   - RPC_SyncScale
   - RPC_SyncSize
-  - OnModelImported
-  - SyncClearCache
-  - SyncClearSavedData
-  - SyncDrawing
-  - SyncLocalModel
-  - SyncMaterialData
-  - SyncMeasurement
-  - SyncModelFromFiles
-  - SyncModelInstance
-  - SyncModelInstanceId
-  - SyncModelTransform
-  - SyncPlaceholderModel
-  - SyncServerModelCache
-  - SyncServerModelLoaded
-  - SyncSessionData
-  - SyncTextureData
+  - RPC_BeginBrushStrokeWithBrushTipPoint
+  - RPC_EndBrushStrokeWithBrushTipPoint
+  - RPC_MoveBrushStrokeWithBrushTipPoint
+  - RPC_UpdateBrushStrokeWithBrushTipPoint
+  - AddPhotonComponents
+  - RPC_CreateControlPoint
+  - RPC_CreateControlPointsParent
+  - RPC_SetBrushSizeMultiplier
+  - RPC_DeselectSphere
+  - RPC_SelectSphere
+  - RPC_SetHoverColor
+  - RPC_SetScale
+  - RPC_DeleteBrushStroke
+  - RPC_DestroyStent
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1
