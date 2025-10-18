@@ -156,6 +156,22 @@ MonoBehaviour:
   - RPC_StartStroke
   - RPC_SyncScale
   - RPC_SyncSize
+  - OnModelImported
+  - SyncClearCache
+  - SyncClearSavedData
+  - SyncDrawing
+  - SyncLocalModel
+  - SyncMaterialData
+  - SyncMeasurement
+  - SyncModelFromFiles
+  - SyncModelInstance
+  - SyncModelInstanceId
+  - SyncModelTransform
+  - SyncPlaceholderModel
+  - SyncServerModelCache
+  - SyncServerModelLoaded
+  - SyncSessionData
+  - SyncTextureData
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

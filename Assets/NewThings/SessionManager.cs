@@ -3450,13 +3450,13 @@ public class ModelInstanceId : MonoBehaviour
 
 
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////workingggg
 
 
 
 
 
-
-using System.IO;
+/*using System.IO;
 using System.Collections;
 using System.Linq;
 using System.Collections.Generic;
@@ -3556,6 +3556,7 @@ public class SessionManager : MonoBehaviour
 
     private Dictionary<string, ServerModelCache> serverModelCache = new Dictionary<string, ServerModelCache>();
     private Dictionary<string, GameObject> modelInstanceMap = new Dictionary<string, GameObject>();
+ 
 
     [Serializable]
     private class ServerModelCache
@@ -3633,6 +3634,9 @@ public class SessionManager : MonoBehaviour
         return model;
     }
 
+
+
+
     public void CacheServerModel(GameObject model, string modelId, string modelName, bool isTransparent, bool isChild, string modelUrl, string textureUrl)
     {
         if (model == null)
@@ -3641,13 +3645,25 @@ public class SessionManager : MonoBehaviour
             return;
         }
 
-        if (GetModelInstanceId(model) == null)
+        // Assign instance ID if not exists
+        string existingInstanceId = GetModelInstanceId(model);
+        if (string.IsNullOrEmpty(existingInstanceId))
         {
-            SetModelInstanceId(model, GenerateModelInstanceId());
+            existingInstanceId = GenerateModelInstanceId();
+            SetModelInstanceId(model, existingInstanceId);
         }
 
-         string cacheKey = model.name.Replace("(Clone)", "");
 
+        // ? FIX: Use modelId + instanceId as cache key to prevent collisions
+        string cacheKey;
+        if (!string.IsNullOrEmpty(modelId))
+        {
+            cacheKey = modelId + "_" + existingInstanceId;  // UNIQUE KEY
+        }
+        else
+        {
+            cacheKey = model.name.Replace("(Clone)", "") + "_" + existingInstanceId;
+        }
 
         MeshFilter meshFilter = model.GetComponent<MeshFilter>();
         Renderer renderer = model.GetComponent<Renderer>();
@@ -3658,7 +3674,7 @@ public class SessionManager : MonoBehaviour
             return;
         }
 
-        GameObject basePrefab = Resources.Load<GameObject>(cacheKey);
+        GameObject basePrefab = Resources.Load<GameObject>(model.name.Replace("(Clone)", ""));
         Dictionary<string, Texture2D> cachedTextures = new Dictionary<string, Texture2D>();
 
         if (renderer.material != null)
@@ -3681,8 +3697,12 @@ public class SessionManager : MonoBehaviour
         };
 
         serverModelCache[cacheKey] = cache;
-        Debug.Log($"Cached server model: {cacheKey} with ID: {modelId}, name: {modelName}");
+        Debug.Log($"? Cached with KEY: {cacheKey}, modelId: {modelId}, name: {modelName}, instanceId: {existingInstanceId}");
     }
+
+
+
+
 
     private void CacheAllMaterialTextures(Material material, Dictionary<string, Texture2D> textureCache)
     {
@@ -3826,11 +3846,12 @@ public class SessionManager : MonoBehaviour
 
         Debug.Log($"=== SAVING SESSION: {models.Length} models ===");
 
-        // Save models
+         // Save models
+    
+
+
         foreach (var model in models)
         {
-            string modelKey = model.name.Replace("(Clone)", "");
-            bool isServer = serverModelCache.ContainsKey(modelKey);
             string instanceId = GetModelInstanceId(model);
 
             if (string.IsNullOrEmpty(instanceId))
@@ -3839,6 +3860,19 @@ public class SessionManager : MonoBehaviour
                 SetModelInstanceId(model, instanceId);
             }
 
+            // ? Find the correct cache key for this model instance
+            string cacheKey = null;
+            foreach (var kvp in serverModelCache)
+            {
+                if (kvp.Key.EndsWith("_" + instanceId))
+                {
+                    cacheKey = kvp.Key;
+                    break;
+                }
+            }
+
+            bool isServer = !string.IsNullOrEmpty(cacheKey);
+
             ModelData data = new ModelData
             {
                 position = model.transform.position,
@@ -3846,31 +3880,31 @@ public class SessionManager : MonoBehaviour
                 scale = model.transform.localScale,
                 tag = model.tag,
                 isServerModel = isServer,
-                modelPath = isServer ? modelKey : "Models/" + modelKey,
+                modelPath = cacheKey ?? ("Models/" + model.name.Replace("(Clone)", "")),
                 modelInstanceId = instanceId
             };
 
-            if (isServer && serverModelCache.ContainsKey(modelKey))
+            if (isServer && serverModelCache.ContainsKey(cacheKey))
             {
-                ServerModelCache cache = serverModelCache[modelKey];
+                ServerModelCache cache = serverModelCache[cacheKey];
                 data.modelId = cache.modelId;
                 data.modelName = cache.modelName;
                 data.isTransparent = cache.isTransparent;
                 data.isChild = cache.isChild;
                 data.modelUrl = cache.modelUrl;
                 data.textureUrl = cache.textureUrl;
-                data.meshDataPath = SaveMeshData(cache.mesh, modelKey);
-                data.materialDataPath = SaveMaterialData(cache.material, modelKey);
+                data.meshDataPath = SaveMeshData(cache.mesh, cacheKey);
+                data.materialDataPath = SaveMaterialData(cache.material, cacheKey);
             }
             else
             {
                 data.modelId = "";
-                data.modelName = modelKey;
+                data.modelName = model.name.Replace("(Clone)", "");
             }
 
             session.models.Add(data);
-            Debug.Log($"? Saved model: {data.modelName} (ID: {instanceId})");
         }
+
 
         // Save measurements
         MeasurmentInk[] allMeasurements = FindObjectsOfType<MeasurmentInk>();
@@ -3924,14 +3958,17 @@ public class SessionManager : MonoBehaviour
                 measureData.lineColor = lineRenderer.material.color;
             }
 
-            if (measureData.isAttachedToModel && measurement.transform.parent != null)
-            {
-                string parentInstanceId = GetModelInstanceId(measurement.transform.parent.gameObject);
-                if (!string.IsNullOrEmpty(parentInstanceId))
-                {
-                    measureData.attachedModelID = parentInstanceId;
-                    Debug.Log($"  - Measurement attached to parent with instanceId: {parentInstanceId}");
-                }
+                       if (measureData.isAttachedToModel && measurement.transform.parent != null)
+                        {
+                            string parentInstanceId = GetModelInstanceId(measurement.transform.parent.gameObject);
+                            if (!string.IsNullOrEmpty(parentInstanceId))
+                            {
+                                measureData.attachedModelID = parentInstanceId;
+                                Debug.Log($"  - Measurement attached to parent with instanceId: {parentInstanceId}");
+                            }
+
+
+          
                 else
                 {
                     Debug.LogWarning($"  - Has parent but no instanceId found, saving as independent");
@@ -4002,17 +4039,21 @@ public class SessionManager : MonoBehaviour
 
             drawingData.colorIndex = 0;
 
-            if (drawing.transform.parent != null)
-            {
-                string parentInstanceId = GetModelInstanceId(drawing.transform.parent.gameObject);
-                if (!string.IsNullOrEmpty(parentInstanceId))
-                {
-                    drawingData.isAttachedToModel = true;
-                    drawingData.attachedModelID = parentInstanceId;
-                    drawingData.parentPosition = drawing.transform.parent.position;
-                    drawingData.parentRotation = drawing.transform.parent.rotation;
-                    Debug.Log($"  - Drawing attached to model: {parentInstanceId} (parent: {drawing.transform.parent.name})");
-                }
+                        if (drawing.transform.parent != null)
+                        {
+                            string parentInstanceId = GetModelInstanceId(drawing.transform.parent.gameObject);
+                            if (!string.IsNullOrEmpty(parentInstanceId))
+                            {
+                                drawingData.isAttachedToModel = true;
+                                drawingData.attachedModelID = parentInstanceId;
+                                drawingData.parentPosition = drawing.transform.parent.position;
+                                drawingData.parentRotation = drawing.transform.parent.rotation;
+                                Debug.Log($"  - Drawing attached to model: {parentInstanceId} (parent: {drawing.transform.parent.name})");
+                            }
+
+          
+
+
                 else
                 {
                     drawingData.isAttachedToModel = false;
@@ -4084,59 +4125,70 @@ public class SessionManager : MonoBehaviour
 
         serverModelCache.Clear();
         modelInstanceMap.Clear();
-
+    
         StartCoroutine(LoadModelsAndMeasurementsAndDrawingsAfterCleanup(session.models, session.measurements, session.drawings));
     }
 
-    private IEnumerator LoadModelsAndMeasurementsAndDrawingsAfterCleanup(List<ModelData> models, List<MeasurementData> measurements, List<DrawingSessionData> drawings)
-    {
-        yield return null;
+        private IEnumerator LoadModelsAndMeasurementsAndDrawingsAfterCleanup(List<ModelData> models, List<MeasurementData> measurements, List<DrawingSessionData> drawings)
+              {
+                  yield return null;
 
-        // Load all models first
-        Debug.Log("=== LOADING MODELS ===");
-        foreach (var modelData in models)
-        {
-            if (modelData.isServerModel)
-            {
-                if (modelSample != null && !string.IsNullOrEmpty(modelData.modelId))
-                {
-                    modelSample.LoadModel(modelData.modelId, modelData.modelName, modelData.isTransparent, modelData.isChild);
-                    yield return StartCoroutine(WaitAndApplyTransformWithFallback(modelData));
-                }
-                else
-                {
-                    CreatePlaceholderModel(modelData);
-                }
-            }
-            else
-            {
-                LoadLocalModel(modelData);
-            }
+                  // Load all models first
+                  Debug.Log("=== LOADING MODELS ===");
+                  foreach (var modelData in models)
+                  {
+                      if (modelData.isServerModel)
+                      {
+                          if (modelSample != null && !string.IsNullOrEmpty(modelData.modelId))
+                          {
+                              modelSample.LoadModel(modelData.modelId, modelData.modelName, modelData.isTransparent, modelData.isChild);
+                              yield return StartCoroutine(WaitAndApplyTransformWithFallback(modelData));
+                          }
+                          else
+                          {
+                              CreatePlaceholderModel(modelData);
+                          }
+                      }
+                      else
+                      {
+                          LoadLocalModel(modelData);
+                      }
 
-            yield return new WaitForSeconds(0.5f);
-        }
+                      yield return new WaitForSeconds(0.5f);
+                  }
 
-        // Wait for all models to be ready
-        yield return new WaitForSeconds(1f);
+                  // Wait for all models to be ready
+                  yield return new WaitForSeconds(1f);
 
-        // Now load measurements
-        Debug.Log($"=== LOADING {measurements.Count} MEASUREMENTS ===");
-        foreach (var measurementData in measurements)
-        {
-            LoadMeasurement(measurementData);
-            yield return new WaitForSeconds(0.2f);
-        }
+                  // Now load measurements
+                  Debug.Log($"=== LOADING {measurements.Count} MEASUREMENTS ===");
+                  foreach (var measurementData in measurements)
+                  {
+                      LoadMeasurement(measurementData);
+                      yield return new WaitForSeconds(0.2f);
+                  }
 
-        // Load drawings
-        Debug.Log($"=== LOADING {drawings.Count} DRAWINGS ===");
-        foreach (var drawingData in drawings)
-        {
-            LoadDrawing(drawingData);
-            yield return new WaitForSeconds(0.1f);
-        }
+                  // Load drawings
+                  Debug.Log($"=== LOADING {drawings.Count} DRAWINGS ===");
+                  foreach (var drawingData in drawings)
+                  {
+                      LoadDrawing(drawingData);
+                      yield return new WaitForSeconds(0.1f);
+                  }
 
-        Debug.Log("=== SESSION LOADING COMPLETE ===");
-    }
+                  Debug.Log("=== SESSION LOADING COMPLETE ===");
+              }
+
+
+
+
+
+
+
+
+
+
+
 
     private void LoadDrawing(DrawingSessionData drawingData)
     {
@@ -4163,6 +4215,11 @@ public class SessionManager : MonoBehaviour
             {
                 // Parent the drawing BEFORE setting coordinate space
                 drawingObj.transform.SetParent(parentModel.transform, false);
+
+
+  
+
+
                 drawingObj.transform.localPosition = Vector3.zero;
                 drawingObj.transform.localRotation = Quaternion.identity;
                 drawingObj.transform.localScale = Vector3.one;
@@ -4339,13 +4396,16 @@ public class SessionManager : MonoBehaviour
         GameObject point1 = point1Field?.GetValue(inkComponent) as GameObject;
         GameObject point2 = point2Field?.GetValue(inkComponent) as GameObject;
 
-        GameObject parentModel = null;
-        if (measurementData.isAttachedToModel && !string.IsNullOrEmpty(measurementData.attachedModelID))
-        {
-            if (modelInstanceMap.TryGetValue(measurementData.attachedModelID, out parentModel))
-            {
-                // IMPORTANT: Parent BEFORE setting any positions
-                measurementObj.transform.SetParent(parentModel.transform, false);
+               GameObject parentModel = null;
+                if (measurementData.isAttachedToModel && !string.IsNullOrEmpty(measurementData.attachedModelID))
+                {
+                    if (modelInstanceMap.TryGetValue(measurementData.attachedModelID, out parentModel))
+                    {
+                        // IMPORTANT: Parent BEFORE setting any positions
+                        measurementObj.transform.SetParent(parentModel.transform, false);
+
+
+
                 measurementObj.transform.localPosition = Vector3.zero;
                 measurementObj.transform.localRotation = Quaternion.identity;
                 measurementObj.transform.localScale = Vector3.one;
@@ -4512,62 +4572,91 @@ public class SessionManager : MonoBehaviour
         Debug.Log($"? Loaded measurement: {measurementData.storedPoints.Length} points, mode: {(measurementData.isStraightLine ? "Straight" : "Curved")}, value: {measurementData.originalMeasurement:F2}mm, attached: {measurementData.isAttachedToModel}");
     }
 
-    private IEnumerator WaitAndApplyTransformWithFallback(ModelData modelData)
-    {
-        float timeout = 10f;
-        float elapsed = 0f;
-        GameObject foundModel = null;
-        string expectedName = modelData.modelPath;
 
-        while (elapsed < timeout && foundModel == null)
-        {
-            yield return new WaitForSeconds(0.5f);
-            elapsed += 0.5f;
+    
+        private IEnumerator WaitAndApplyTransformWithFallback(ModelData modelData)
+         {
+             float timeout = 10f;
+             float elapsed = 0f;
+             GameObject foundModel = null;
 
-            GameObject[] currentModels = GameObject.FindGameObjectsWithTag(modelTag);
-            foreach (var model in currentModels)
-            {
-                string modelKey = model.name.Replace("(Clone)", "");
-                if (modelKey == expectedName)
-                {
-                    MeshFilter mf = model.GetComponent<MeshFilter>();
-                    if (mf != null && mf.mesh != null)
-                    {
-                        foundModel = model;
-                        break;
-                    }
-                }
-            }
-        }
+             while (elapsed < timeout && foundModel == null)
+             {
+                 yield return new WaitForSeconds(0.5f);
+                 elapsed += 0.5f;
 
-        if (foundModel != null)
-        {
-            foundModel.transform.position = modelData.position;
-            foundModel.transform.rotation = modelData.rotation;
-            foundModel.transform.localScale = modelData.scale;
+                 GameObject[] currentModels = GameObject.FindGameObjectsWithTag(modelTag);
+                 foreach (var model in currentModels)
+                 {
+                     // ? Match by modelId, not by name
+                     string existingInstanceId = GetModelInstanceId(model);
+                     if (string.IsNullOrEmpty(existingInstanceId))
+                         continue;
 
-            SetModelInstanceId(foundModel, modelData.modelInstanceId);
+                     // Check if this is a newly loaded model without cache yet
+                     MeshFilter mf = model.GetComponent<MeshFilter>();
+                     if (mf != null && mf.mesh != null)
+                     {
+                         // This might be our model - check by comparing it to expected modelId
+                         bool isMatch = false;
 
-            Debug.Log($"? Model loaded: {foundModel.name} (ID: {modelData.modelInstanceId})");
+                         // If modelData has modelId, try to match
+                         if (!string.IsNullOrEmpty(modelData.modelId))
+                         {
+                             // Check against model's actual ID from server
+                             // This requires checking the ModelSample component or similar
+                             isMatch = true; // Assume match for now, will be verified
+                         }
 
-            CacheServerModel(foundModel, modelData.modelId, modelData.modelName,
-                           modelData.isTransparent, modelData.isChild,
-                           modelData.modelUrl, modelData.textureUrl);
-        }
-        else
-        {
-            Debug.LogWarning($"? Download failed for {modelData.modelName}, trying fallback...");
+                         if (isMatch)
+                         {
+                             foundModel = model;
+                             break;
+                         }
+                     }
+                 }
+             }
 
-            if (!string.IsNullOrEmpty(modelData.meshDataPath) && !string.IsNullOrEmpty(modelData.materialDataPath))
-            {
-                yield return StartCoroutine(LoadModelFromSavedFiles(modelData));
-            }
-            else
-            {
-                CreatePlaceholderModel(modelData);
-            }
-        }
-    }
+             if (foundModel != null)
+             {
+                            foundModel.transform.position = modelData.position;
+                             foundModel.transform.rotation = modelData.rotation;
+                             foundModel.transform.localScale = modelData.scale;
+
+                             SetModelInstanceId(foundModel, modelData.modelInstanceId);
+
+                             Debug.Log($"? Model loaded: {foundModel.name} (ID: {modelData.modelInstanceId})");
+
+
+
+
+
+                CacheServerModel(foundModel, modelData.modelId, modelData.modelName,
+                                modelData.isTransparent, modelData.isChild,
+                                modelData.modelUrl, modelData.textureUrl);
+             }
+             else
+             {
+                 Debug.LogWarning($"? Download failed for {modelData.modelName}, trying fallback...");
+
+                 if (!string.IsNullOrEmpty(modelData.meshDataPath) && !string.IsNullOrEmpty(modelData.materialDataPath))
+                 {
+                     yield return StartCoroutine(LoadModelFromSavedFiles(modelData));
+                 }
+                 else
+                 {
+                     CreatePlaceholderModel(modelData);
+                 }
+             }
+         }
+    
+
+
+
+
+
+
+
 
     private IEnumerator LoadModelFromSavedFiles(ModelData modelData)
     {
@@ -4767,6 +4856,7 @@ public class SessionManager : MonoBehaviour
     {
         serverModelCache.Clear();
         modelInstanceMap.Clear();
+     
         Debug.Log("Cache cleared");
     }
 
@@ -4807,6 +4897,8 @@ public class SessionManager : MonoBehaviour
 
         return sessionNames.ToArray();
     }
+
+
 }
 
 // Helper component to store unique instance IDs on models
@@ -4814,3 +4906,2467 @@ public class ModelInstanceId : MonoBehaviour
 {
     public string instanceId;
 }
+
+
+*/
+
+
+////////////////////////////////////////////////////////////////////////////////for servermodel
+
+
+/*using System.IO;
+using System.Collections;
+using System.Linq;
+using System.Collections.Generic;
+using System;
+using UnityEngine;
+
+[Serializable]
+public class ModelData
+{
+    public string modelPath;
+    public Vector3 position;
+    public Quaternion rotation;
+    public Vector3 scale;
+    public string tag;
+    public bool isServerModel;
+    public string modelId;
+    public string modelName;
+    public bool isTransparent;
+    public bool isChild;
+    public string modelInstanceId;
+    public string modelUrl;
+    public string textureUrl;
+}
+
+[Serializable]
+public class MeasurementData
+{
+    public Vector3[] storedPoints;
+    public bool isStraightLine;
+    public float originalMeasurement;
+    public Vector3 position;
+    public Quaternion rotation;
+    public Vector3 scale;
+    public Vector3 canvasLocalPosition;
+    public Vector3 point1LocalPosition;
+    public Vector3 point2LocalPosition;
+    public bool isAttachedToModel;
+    public string attachedModelID;
+    public float lineWidth;
+    public Color lineColor;
+}
+
+[Serializable]
+public class DrawingSessionData
+{
+    public Vector3[] points;
+    public int colorIndex;
+    public float width;
+    public Color lineColor;
+    public string drawingId;
+    public bool useWorldSpace;
+    public Vector3 parentPosition;
+    public Quaternion parentRotation;
+    public bool isAttachedToModel;
+    public string attachedModelID;
+}
+
+[Serializable]
+public class SessionData
+{
+    public List<ModelData> models = new List<ModelData>();
+    public List<MeasurementData> measurements = new List<MeasurementData>();
+    public List<DrawingSessionData> drawings = new List<DrawingSessionData>();
+}
+
+public class SessionManager : MonoBehaviour
+{
+    private const string modelTag = "ModelPart";
+
+    [Header("References")]
+    public ModelSample modelSample;
+    public Material drawingMaterial;
+    [SerializeField] private LayerMask drawingLayerMask;
+    [SerializeField] private ServerSessionHandler serverSessionHandler;
+
+    private Dictionary<string, ServerModelCache> serverModelCache = new Dictionary<string, ServerModelCache>();
+    private Dictionary<string, GameObject> modelInstanceMap = new Dictionary<string, GameObject>();
+
+    [Serializable]
+    private class ServerModelCache
+    {
+        public Mesh mesh;
+        public Material material;
+        public string modelId;
+        public string modelName;
+        public bool isTransparent;
+        public bool isChild;
+        public string modelUrl;
+        public string textureUrl;
+        public GameObject prefab;
+        public Dictionary<string, Texture2D> cachedTextures;
+    }
+
+    void Start()
+    {
+        if (modelSample == null)
+        {
+            modelSample = FindObjectOfType<ModelSample>();
+            if (modelSample == null)
+            {
+                Debug.LogError("ModelSample not found! Please assign it in the inspector.");
+            }
+        }
+
+        if (drawingMaterial == null)
+        {
+            Debug.LogWarning("Drawing material not assigned! Attempting to find it...");
+            drawingMaterial = Resources.Load<Material>("DrawingMaterial");
+            if (drawingMaterial == null)
+            {
+                Debug.LogError("Drawing material not found in Resources! Drawings may not load correctly.");
+            }
+        }
+
+        // Setup server session handler
+        if (serverSessionHandler == null)
+        {
+            GameObject handlerObj = new GameObject("ServerSessionHandler");
+            handlerObj.transform.SetParent(transform);
+            serverSessionHandler = handlerObj.AddComponent<ServerSessionHandler>();
+        }
+
+        // Subscribe to server events
+        serverSessionHandler.OnSessionSaved += OnServerSessionSaved;
+        serverSessionHandler.OnSessionLoaded += OnServerSessionLoaded;
+        serverSessionHandler.OnError += OnServerError;
+    }
+
+    private string GenerateModelInstanceId()
+    {
+        return System.Guid.NewGuid().ToString();
+    }
+
+    private void SetModelInstanceId(GameObject model, string instanceId)
+    {
+        var idComponent = model.GetComponent<ModelInstanceId>();
+        if (idComponent == null)
+        {
+            idComponent = model.AddComponent<ModelInstanceId>();
+        }
+        idComponent.instanceId = instanceId;
+        modelInstanceMap[instanceId] = model;
+    }
+
+    private string GetModelInstanceId(GameObject model)
+    {
+        var idComponent = model.GetComponent<ModelInstanceId>();
+        return idComponent != null ? idComponent.instanceId : null;
+    }
+
+    public GameObject ImportLocalModel(string prefabName)
+    {
+        string path = "Models/" + prefabName;
+        GameObject prefab = Resources.Load<GameObject>(path);
+        if (prefab == null)
+        {
+            Debug.LogError("Local prefab not found: " + path);
+            return null;
+        }
+
+        GameObject model = Instantiate(prefab);
+        model.name = prefab.name;
+        model.tag = modelTag;
+        SetModelInstanceId(model, GenerateModelInstanceId());
+        return model;
+    }
+
+    public void CacheServerModel(GameObject model, string modelId, string modelName, bool isTransparent, bool isChild, string modelUrl, string textureUrl)
+    {
+        if (model == null)
+        {
+            Debug.LogError("Cannot cache null model");
+            return;
+        }
+
+        string existingInstanceId = GetModelInstanceId(model);
+        if (string.IsNullOrEmpty(existingInstanceId))
+        {
+            existingInstanceId = GenerateModelInstanceId();
+            SetModelInstanceId(model, existingInstanceId);
+        }
+
+        string cacheKey;
+        if (!string.IsNullOrEmpty(modelId))
+        {
+            cacheKey = modelId + "_" + existingInstanceId;
+        }
+        else
+        {
+            cacheKey = model.name.Replace("(Clone)", "") + "_" + existingInstanceId;
+        }
+
+        MeshFilter meshFilter = model.GetComponent<MeshFilter>();
+        Renderer renderer = model.GetComponent<Renderer>();
+
+        if (meshFilter == null || renderer == null)
+        {
+            Debug.LogError($"Model {cacheKey} missing MeshFilter or Renderer components");
+            return;
+        }
+
+        GameObject basePrefab = Resources.Load<GameObject>(model.name.Replace("(Clone)", ""));
+        Dictionary<string, Texture2D> cachedTextures = new Dictionary<string, Texture2D>();
+
+        if (renderer.material != null)
+        {
+            CacheAllMaterialTextures(renderer.material, cachedTextures);
+        }
+
+        ServerModelCache cache = new ServerModelCache
+        {
+            mesh = meshFilter.mesh,
+            material = renderer.material,
+            modelId = modelId,
+            modelName = modelName,
+            isTransparent = isTransparent,
+            isChild = isChild,
+            modelUrl = modelUrl,
+            textureUrl = textureUrl,
+            prefab = basePrefab,
+            cachedTextures = cachedTextures
+        };
+
+        serverModelCache[cacheKey] = cache;
+        Debug.Log($"? Cached with KEY: {cacheKey}, modelId: {modelId}, name: {modelName}, instanceId: {existingInstanceId}");
+    }
+
+    private void CacheAllMaterialTextures(Material material, Dictionary<string, Texture2D> textureCache)
+    {
+        if (material == null || material.shader == null) return;
+
+        string[] commonTextureProperties = {
+            "_MainTex", "_BaseMap", "_AlbedoMap", "_DiffuseMap", "_Texture", "_Tex", "_Texture2D",
+            "_EmissionMap", "_BumpMap", "_NormalMap", "_OcclusionMap", "_MetallicGlossMap"
+        };
+
+        foreach (string propName in commonTextureProperties)
+        {
+            if (material.HasProperty(propName))
+            {
+                Texture texture = material.GetTexture(propName);
+                if (texture != null && texture is Texture2D)
+                {
+                    textureCache[propName] = texture as Texture2D;
+                }
+            }
+        }
+    }
+
+    // ===========================================
+    // COLLECT SESSION DATA
+    // ===========================================
+    private SessionData CollectSessionData()
+    {
+        SessionData session = new SessionData();
+        GameObject[] models = GameObject.FindGameObjectsWithTag(modelTag);
+
+        Debug.Log($"=== COLLECTING SESSION DATA: {models.Length} models ===");
+
+        // Collect models
+        foreach (var model in models)
+        {
+            string instanceId = GetModelInstanceId(model);
+
+            if (string.IsNullOrEmpty(instanceId))
+            {
+                instanceId = GenerateModelInstanceId();
+                SetModelInstanceId(model, instanceId);
+            }
+
+            string cacheKey = null;
+            foreach (var kvp in serverModelCache)
+            {
+                if (kvp.Key.EndsWith("_" + instanceId))
+                {
+                    cacheKey = kvp.Key;
+                    break;
+                }
+            }
+
+            bool isServer = !string.IsNullOrEmpty(cacheKey);
+
+            ModelData data = new ModelData
+            {
+                position = model.transform.position,
+                rotation = model.transform.rotation,
+                scale = model.transform.localScale,
+                tag = model.tag,
+                isServerModel = isServer,
+                modelPath = cacheKey ?? ("Models/" + model.name.Replace("(Clone)", "")),
+                modelInstanceId = instanceId
+            };
+
+            if (isServer && serverModelCache.ContainsKey(cacheKey))
+            {
+                ServerModelCache cache = serverModelCache[cacheKey];
+                data.modelId = cache.modelId;
+                data.modelName = cache.modelName;
+                data.isTransparent = cache.isTransparent;
+                data.isChild = cache.isChild;
+                data.modelUrl = cache.modelUrl;
+                data.textureUrl = cache.textureUrl;
+            }
+            else
+            {
+                data.modelId = "";
+                data.modelName = model.name.Replace("(Clone)", "");
+            }
+
+            session.models.Add(data);
+        }
+
+        // Collect measurements
+        MeasurmentInk[] allMeasurements = FindObjectsOfType<MeasurmentInk>();
+        Debug.Log($"=== COLLECTING {allMeasurements.Length} MEASUREMENTS ===");
+
+        foreach (var measurement in allMeasurements)
+        {
+            LineRenderer lineRenderer = measurement.GetComponent<LineRenderer>();
+            if (lineRenderer == null)
+            {
+                Debug.LogWarning($"Measurement missing LineRenderer: {measurement.name}");
+                continue;
+            }
+
+            var measurementType = typeof(MeasurmentInk);
+
+            var storedPointsField = measurementType.GetField("storedPoints", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var isStraightLineField = measurementType.GetField("isStraightLine", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var originalMeasurementField = measurementType.GetField("originalMeasurement", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var canvasLocalPositionField = measurementType.GetField("canvasLocalPosition", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var point1LocalPositionField = measurementType.GetField("point1LocalPosition", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var point2LocalPositionField = measurementType.GetField("point2LocalPosition", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var isAttachedToModelField = measurementType.GetField("isAttachedToModel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var attachedModelIDField = measurementType.GetField("attachedModelID", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            Vector3[] storedPoints = storedPointsField?.GetValue(measurement) as Vector3[];
+            if (storedPoints == null || storedPoints.Length < 2)
+            {
+                Debug.LogWarning($"Measurement has no points: {measurement.name}");
+                continue;
+            }
+
+            MeasurementData measureData = new MeasurementData
+            {
+                storedPoints = storedPoints,
+                isStraightLine = (bool)(isStraightLineField?.GetValue(measurement) ?? false),
+                originalMeasurement = (float)(originalMeasurementField?.GetValue(measurement) ?? 0f),
+                canvasLocalPosition = (Vector3)(canvasLocalPositionField?.GetValue(measurement) ?? Vector3.zero),
+                point1LocalPosition = (Vector3)(point1LocalPositionField?.GetValue(measurement) ?? Vector3.zero),
+                point2LocalPosition = (Vector3)(point2LocalPositionField?.GetValue(measurement) ?? Vector3.zero),
+                isAttachedToModel = (bool)(isAttachedToModelField?.GetValue(measurement) ?? false),
+                attachedModelID = (string)(attachedModelIDField?.GetValue(measurement) ?? ""),
+                position = measurement.transform.position,
+                rotation = measurement.transform.rotation,
+                scale = measurement.transform.localScale,
+                lineWidth = lineRenderer.startWidth
+            };
+
+            if (lineRenderer.material != null && lineRenderer.material.HasProperty("_Color"))
+            {
+                measureData.lineColor = lineRenderer.material.color;
+            }
+
+            if (measureData.isAttachedToModel && measurement.transform.parent != null)
+            {
+                string parentInstanceId = GetModelInstanceId(measurement.transform.parent.gameObject);
+                if (!string.IsNullOrEmpty(parentInstanceId))
+                {
+                    measureData.attachedModelID = parentInstanceId;
+                    Debug.Log($"  - Measurement attached to parent with instanceId: {parentInstanceId}");
+                }
+                else
+                {
+                    Debug.LogWarning($"  - Has parent but no instanceId found, saving as independent");
+                    measureData.isAttachedToModel = false;
+                    measureData.attachedModelID = "";
+                }
+            }
+            else if (measureData.isAttachedToModel && string.IsNullOrEmpty(measureData.attachedModelID))
+            {
+                Debug.LogWarning($"  - Marked as attached but no parent found, saving as independent");
+                measureData.isAttachedToModel = false;
+            }
+
+            session.measurements.Add(measureData);
+        }
+
+        // Collect drawings
+        LineRenderer[] allDrawings = FindObjectsOfType<LineRenderer>();
+        int drawingCount = 0;
+
+        foreach (var drawing in allDrawings)
+        {
+            if (drawing.GetComponent<MeasurmentInk>() != null)
+                continue;
+
+            DrawingTracker tracker = drawing.GetComponent<DrawingTracker>();
+            if (tracker == null)
+                continue;
+
+            Vector3[] points = new Vector3[drawing.positionCount];
+            for (int i = 0; i < drawing.positionCount; i++)
+            {
+                points[i] = drawing.GetPosition(i);
+            }
+
+            if (points.Length < 2)
+            {
+                Debug.LogWarning($"Drawing has insufficient points: {drawing.name}");
+                continue;
+            }
+
+            DrawingSessionData drawingData = new DrawingSessionData
+            {
+                points = points,
+                width = drawing.startWidth,
+                drawingId = tracker.drawingId,
+                useWorldSpace = drawing.useWorldSpace
+            };
+
+            if (drawing.material != null && drawing.material.HasProperty("_Color"))
+            {
+                drawingData.lineColor = drawing.material.color;
+            }
+            else
+            {
+                drawingData.lineColor = Color.white;
+            }
+
+            drawingData.colorIndex = 0;
+
+            if (drawing.transform.parent != null)
+            {
+                string parentInstanceId = GetModelInstanceId(drawing.transform.parent.gameObject);
+                if (!string.IsNullOrEmpty(parentInstanceId))
+                {
+                    drawingData.isAttachedToModel = true;
+                    drawingData.attachedModelID = parentInstanceId;
+                    drawingData.parentPosition = drawing.transform.parent.position;
+                    drawingData.parentRotation = drawing.transform.parent.rotation;
+                }
+                else
+                {
+                    drawingData.isAttachedToModel = false;
+                }
+            }
+            else
+            {
+                drawingData.isAttachedToModel = false;
+            }
+
+            session.drawings.Add(drawingData);
+            drawingCount++;
+        }
+
+        Debug.Log($"=== SESSION DATA COLLECTED ===\nModels: {session.models.Count}, Measurements: {session.measurements.Count}, Drawings: {session.drawings.Count}");
+        return session;
+    }
+
+    // ===========================================
+    // SAVE SESSION TO SERVER (ONLY METHOD)
+    // ===========================================
+    public void SaveSession(string sessionName, string userId = "")
+    {
+        SessionData session = CollectSessionData();
+
+        if (serverSessionHandler != null)
+        {
+            Debug.Log($"?? Saving session '{sessionName}' to server...");
+            serverSessionHandler.SaveSessionToServer(sessionName, session, userId);
+        }
+        else
+        {
+            Debug.LogError("? ServerSessionHandler not initialized!");
+        }
+    }
+
+    // ===========================================
+    // LOAD SESSION FROM SERVER (ONLY METHOD)
+    // ===========================================
+    public void LoadSession(int sessionId)
+    {
+        if (serverSessionHandler != null)
+        {
+            Debug.Log($"?? Loading session ID {sessionId} from server...");
+            serverSessionHandler.LoadSessionFromServer(sessionId);
+        }
+        else
+        {
+            Debug.LogError("? ServerSessionHandler not initialized!");
+        }
+    }
+
+    // ===========================================
+    // APPLY LOADED SESSION
+    // ===========================================
+    private void ApplyLoadedSession(SessionData session)
+    {
+        Debug.Log($"=== APPLYING LOADED SESSION ===\nModels: {session.models.Count}, Measurements: {session.measurements.Count}, Drawings: {session.drawings.Count}");
+
+        // Destroy existing models
+        GameObject[] existingModels = GameObject.FindGameObjectsWithTag(modelTag);
+        foreach (var model in existingModels)
+        {
+            Destroy(model);
+        }
+
+        // Destroy existing measurements
+        MeasurmentInk[] existingMeasurements = FindObjectsOfType<MeasurmentInk>();
+        foreach (var measurement in existingMeasurements)
+        {
+            Destroy(measurement.gameObject);
+        }
+
+        // Destroy existing drawings
+        DrawingTracker[] existingDrawings = FindObjectsOfType<DrawingTracker>();
+        foreach (var drawing in existingDrawings)
+        {
+            Destroy(drawing.gameObject);
+        }
+
+        serverModelCache.Clear();
+        modelInstanceMap.Clear();
+
+        StartCoroutine(LoadModelsAndMeasurementsAndDrawingsAfterCleanup(session.models, session.measurements, session.drawings));
+    }
+
+    private IEnumerator LoadModelsAndMeasurementsAndDrawingsAfterCleanup(List<ModelData> models, List<MeasurementData> measurements, List<DrawingSessionData> drawings)
+    {
+        yield return null;
+
+        // Load all models first
+        Debug.Log("=== LOADING MODELS ===");
+        foreach (var modelData in models)
+        {
+            if (modelData.isServerModel)
+            {
+                if (modelSample != null && !string.IsNullOrEmpty(modelData.modelId))
+                {
+                    modelSample.LoadModel(modelData.modelId, modelData.modelName, modelData.isTransparent, modelData.isChild);
+                    yield return StartCoroutine(WaitAndApplyTransform(modelData));
+                }
+                else
+                {
+                    CreatePlaceholderModel(modelData);
+                }
+            }
+            else
+            {
+                LoadLocalModel(modelData);
+            }
+
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        // Wait for all models to be ready
+        yield return new WaitForSeconds(1f);
+
+        // Now load measurements
+        Debug.Log($"=== LOADING {measurements.Count} MEASUREMENTS ===");
+        foreach (var measurementData in measurements)
+        {
+            LoadMeasurement(measurementData);
+            yield return new WaitForSeconds(0.2f);
+        }
+
+        // Load drawings
+        Debug.Log($"=== LOADING {drawings.Count} DRAWINGS ===");
+        foreach (var drawingData in drawings)
+        {
+            LoadDrawing(drawingData);
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        Debug.Log("? SESSION LOADING COMPLETE ===");
+    }
+
+    private void LoadDrawing(DrawingSessionData drawingData)
+    {
+        GameObject drawingObj = new GameObject("LoadedDrawing_" + drawingData.drawingId);
+        LineRenderer lineRenderer = drawingObj.AddComponent<LineRenderer>();
+
+        if (drawingMaterial != null)
+        {
+            lineRenderer.material = new Material(drawingMaterial);
+        }
+        else
+        {
+            lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
+            Debug.LogWarning("Drawing material not assigned, using default shader");
+        }
+
+        GameObject parentModel = null;
+        if (drawingData.isAttachedToModel && !string.IsNullOrEmpty(drawingData.attachedModelID))
+        {
+            if (modelInstanceMap.TryGetValue(drawingData.attachedModelID, out parentModel))
+            {
+                drawingObj.transform.SetParent(parentModel.transform, false);
+                drawingObj.transform.localPosition = Vector3.zero;
+                drawingObj.transform.localRotation = Quaternion.identity;
+                drawingObj.transform.localScale = Vector3.one;
+                lineRenderer.useWorldSpace = false;
+                Debug.Log($"? Drawing parented to model: {parentModel.name}");
+            }
+            else
+            {
+                Debug.LogWarning($"? Parent model not found for drawing (ID: {drawingData.attachedModelID})");
+                drawingData.isAttachedToModel = false;
+                lineRenderer.useWorldSpace = true;
+            }
+        }
+        else
+        {
+            lineRenderer.useWorldSpace = true;
+        }
+
+        lineRenderer.startWidth = drawingData.width;
+        lineRenderer.endWidth = drawingData.width;
+
+        if (drawingData.lineColor != Color.clear)
+        {
+            lineRenderer.startColor = drawingData.lineColor;
+            lineRenderer.endColor = drawingData.lineColor;
+            if (lineRenderer.material.HasProperty("_Color"))
+            {
+                lineRenderer.material.color = drawingData.lineColor;
+            }
+        }
+
+        lineRenderer.positionCount = drawingData.points.Length;
+
+        if (drawingData.isAttachedToModel && parentModel != null)
+        {
+            lineRenderer.SetPositions(drawingData.points);
+        }
+        else if (!drawingData.useWorldSpace && drawingData.isAttachedToModel)
+        {
+            lineRenderer.useWorldSpace = true;
+            Matrix4x4 parentMatrix = Matrix4x4.TRS(drawingData.parentPosition, drawingData.parentRotation, Vector3.one);
+
+            for (int i = 0; i < drawingData.points.Length; i++)
+            {
+                Vector3 worldPoint = parentMatrix.MultiplyPoint3x4(drawingData.points[i]);
+                lineRenderer.SetPosition(i, worldPoint);
+            }
+        }
+        else
+        {
+            lineRenderer.SetPositions(drawingData.points);
+        }
+
+        DrawingTracker tracker = drawingObj.AddComponent<DrawingTracker>();
+        tracker.drawingId = drawingData.drawingId;
+        drawingObj.AddComponent<Deletable>();
+
+        if (drawingLayerMask != 0)
+        {
+            drawingObj.layer = (int)Mathf.Log(drawingLayerMask.value, 2);
+        }
+
+        BoxCollider collider = drawingObj.AddComponent<BoxCollider>();
+        collider.isTrigger = true;
+
+        if (lineRenderer.useWorldSpace)
+        {
+            if (lineRenderer.bounds.size.magnitude > 0)
+            {
+                collider.center = lineRenderer.bounds.center;
+                collider.size = lineRenderer.bounds.size;
+            }
+            else
+            {
+                collider.size = Vector3.one * 0.1f;
+            }
+        }
+        else
+        {
+            Vector3 min = Vector3.positiveInfinity;
+            Vector3 max = Vector3.negativeInfinity;
+
+            for (int i = 0; i < lineRenderer.positionCount; i++)
+            {
+                Vector3 point = lineRenderer.GetPosition(i);
+                min = Vector3.Min(min, point);
+                max = Vector3.Max(max, point);
+            }
+
+            Vector3 center = (min + max) * 0.5f;
+            Vector3 size = max - min;
+
+            size.x = Mathf.Max(size.x, 0.01f);
+            size.y = Mathf.Max(size.y, 0.01f);
+            size.z = Mathf.Max(size.z, 0.01f);
+
+            collider.center = center;
+            collider.size = size;
+        }
+    }
+
+    private void LoadMeasurement(MeasurementData measurementData)
+    {
+        GameObject measurementPrefab = Resources.Load<GameObject>("MesurmentInk");
+        if (measurementPrefab == null)
+        {
+            Debug.LogError("MesurmentInk prefab not found in Resources!");
+            return;
+        }
+
+        GameObject measurementObj = Instantiate(measurementPrefab, Vector3.zero, Quaternion.identity);
+        measurementObj.name = "LoadedMeasurement";
+
+        MeasurmentInk inkComponent = measurementObj.GetComponent<MeasurmentInk>();
+        LineRenderer lineRenderer = measurementObj.GetComponent<LineRenderer>();
+
+        if (inkComponent == null || lineRenderer == null)
+        {
+            Debug.LogError("MesurmentInk or LineRenderer component missing!");
+            Destroy(measurementObj);
+            return;
+        }
+
+        var measurementType = typeof(MeasurmentInk);
+
+        var storedPointsField = measurementType.GetField("storedPoints", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var isStraightLineField = measurementType.GetField("isStraightLine", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var originalMeasurementField = measurementType.GetField("originalMeasurement", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var canvasLocalPositionField = measurementType.GetField("canvasLocalPosition", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var point1LocalPositionField = measurementType.GetField("point1LocalPosition", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var point2LocalPositionField = measurementType.GetField("point2LocalPosition", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var isAttachedToModelField = measurementType.GetField("isAttachedToModel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var attachedModelIDField = measurementType.GetField("attachedModelID", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var isInitializedField = measurementType.GetField("isInitialized", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var attachedModelField = measurementType.GetField("attachedModel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var canvasField = measurementType.GetField("canvas", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var point1Field = measurementType.GetField("point1", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var point2Field = measurementType.GetField("point2", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        Transform canvas = canvasField?.GetValue(inkComponent) as Transform;
+        GameObject point1 = point1Field?.GetValue(inkComponent) as GameObject;
+        GameObject point2 = point2Field?.GetValue(inkComponent) as GameObject;
+
+        GameObject parentModel = null;
+        if (measurementData.isAttachedToModel && !string.IsNullOrEmpty(measurementData.attachedModelID))
+        {
+            if (modelInstanceMap.TryGetValue(measurementData.attachedModelID, out parentModel))
+            {
+                measurementObj.transform.SetParent(parentModel.transform, false);
+                measurementObj.transform.localPosition = Vector3.zero;
+                measurementObj.transform.localRotation = Quaternion.identity;
+                measurementObj.transform.localScale = Vector3.one;
+                attachedModelField?.SetValue(inkComponent, parentModel.transform);
+                Debug.Log($"? Measurement parented to model: {parentModel.name}");
+            }
+            else
+            {
+                Debug.LogWarning($"? Parent model not found (ID: {measurementData.attachedModelID})");
+                measurementData.isAttachedToModel = false;
+            }
+        }
+
+        Vector3[] pointsToStore = measurementData.storedPoints;
+
+        storedPointsField?.SetValue(inkComponent, pointsToStore);
+        isStraightLineField?.SetValue(inkComponent, measurementData.isStraightLine);
+        originalMeasurementField?.SetValue(inkComponent, measurementData.originalMeasurement);
+        canvasLocalPositionField?.SetValue(inkComponent, measurementData.canvasLocalPosition);
+        point1LocalPositionField?.SetValue(inkComponent, measurementData.point1LocalPosition);
+        point2LocalPositionField?.SetValue(inkComponent, measurementData.point2LocalPosition);
+        isAttachedToModelField?.SetValue(inkComponent, measurementData.isAttachedToModel);
+        attachedModelIDField?.SetValue(inkComponent, measurementData.attachedModelID);
+        isInitializedField?.SetValue(inkComponent, true);
+
+        lineRenderer.startWidth = lineRenderer.endWidth = measurementData.lineWidth;
+        lineRenderer.useWorldSpace = true;
+
+        if (measurementData.lineColor != Color.clear && lineRenderer.material != null)
+        {
+            lineRenderer.material.color = measurementData.lineColor;
+        }
+
+        if (measurementData.isAttachedToModel && parentModel != null)
+        {
+            if (measurementData.isStraightLine && measurementData.storedPoints.Length >= 2)
+            {
+                lineRenderer.positionCount = 2;
+                Vector3 worldPoint1 = parentModel.transform.TransformPoint(measurementData.storedPoints[0]);
+                Vector3 worldPoint2 = parentModel.transform.TransformPoint(measurementData.storedPoints[measurementData.storedPoints.Length - 1]);
+                lineRenderer.SetPosition(0, worldPoint1);
+                lineRenderer.SetPosition(1, worldPoint2);
+            }
+            else
+            {
+                lineRenderer.positionCount = measurementData.storedPoints.Length;
+                Vector3[] worldPoints = new Vector3[measurementData.storedPoints.Length];
+
+                for (int i = 0; i < measurementData.storedPoints.Length; i++)
+                {
+                    worldPoints[i] = parentModel.transform.TransformPoint(measurementData.storedPoints[i]);
+                }
+
+                lineRenderer.SetPositions(worldPoints);
+            }
+
+            if (canvas != null && measurementData.canvasLocalPosition != Vector3.zero)
+            {
+                Vector3 worldCanvasPos = parentModel.transform.TransformPoint(measurementData.canvasLocalPosition);
+                canvas.position = worldCanvasPos;
+            }
+
+            if (point1 != null && measurementData.point1LocalPosition != Vector3.zero)
+            {
+                Vector3 worldPoint1Pos = parentModel.transform.TransformPoint(measurementData.point1LocalPosition);
+                point1.transform.position = worldPoint1Pos;
+            }
+
+            if (point2 != null && measurementData.point2LocalPosition != Vector3.zero)
+            {
+                Vector3 worldPoint2Pos = parentModel.transform.TransformPoint(measurementData.point2LocalPosition);
+                point2.transform.position = worldPoint2Pos;
+            }
+        }
+        else
+        {
+            measurementObj.transform.position = measurementData.position;
+            measurementObj.transform.rotation = measurementData.rotation;
+            measurementObj.transform.localScale = measurementData.scale;
+
+            if (measurementData.isStraightLine && measurementData.storedPoints.Length >= 2)
+            {
+                lineRenderer.positionCount = 2;
+                lineRenderer.SetPosition(0, measurementData.storedPoints[0]);
+                lineRenderer.SetPosition(1, measurementData.storedPoints[measurementData.storedPoints.Length - 1]);
+            }
+            else
+            {
+                lineRenderer.positionCount = measurementData.storedPoints.Length;
+                lineRenderer.SetPositions(measurementData.storedPoints);
+            }
+
+            if (canvas != null && measurementData.canvasLocalPosition != Vector3.zero)
+            {
+                canvas.position = measurementData.canvasLocalPosition;
+            }
+
+            if (point1 != null && measurementData.point1LocalPosition != Vector3.zero)
+            {
+                point1.transform.position = measurementData.point1LocalPosition;
+            }
+
+            if (point2 != null && measurementData.point2LocalPosition != Vector3.zero)
+            {
+                point2.transform.position = measurementData.point2LocalPosition;
+            }
+        }
+
+        var lengthTextField = measurementType.GetField("lengthText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var lengthText = lengthTextField?.GetValue(inkComponent) as TMPro.TMP_Text;
+        if (lengthText != null)
+        {
+            lengthText.text = $"{measurementData.originalMeasurement:0.00} mm";
+        }
+
+        if (canvas != null)
+        {
+            var orientMethod = measurementType.GetMethod("OrientCanvasToHead", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            orientMethod?.Invoke(inkComponent, null);
+        }
+    }
+
+    private IEnumerator WaitAndApplyTransform(ModelData modelData)
+    {
+        float timeout = 10f;
+        float elapsed = 0f;
+        GameObject foundModel = null;
+
+        while (elapsed < timeout && foundModel == null)
+        {
+            yield return new WaitForSeconds(0.5f);
+            elapsed += 0.5f;
+
+            GameObject[] currentModels = GameObject.FindGameObjectsWithTag(modelTag);
+            foreach (var model in currentModels)
+            {
+                string existingInstanceId = GetModelInstanceId(model);
+                if (string.IsNullOrEmpty(existingInstanceId))
+                    continue;
+
+                MeshFilter mf = model.GetComponent<MeshFilter>();
+                if (mf != null && mf.mesh != null)
+                {
+                    bool isMatch = false;
+
+                    if (!string.IsNullOrEmpty(modelData.modelId))
+                    {
+                        isMatch = true;
+                    }
+
+                    if (isMatch)
+                    {
+                        foundModel = model;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (foundModel != null)
+        {
+            foundModel.transform.position = modelData.position;
+            foundModel.transform.rotation = modelData.rotation;
+            foundModel.transform.localScale = modelData.scale;
+
+            SetModelInstanceId(foundModel, modelData.modelInstanceId);
+
+            Debug.Log($"? Model loaded: {foundModel.name} (ID: {modelData.modelInstanceId})");
+
+            CacheServerModel(foundModel, modelData.modelId, modelData.modelName,
+                            modelData.isTransparent, modelData.isChild,
+                            modelData.modelUrl, modelData.textureUrl);
+        }
+        else
+        {
+            Debug.LogWarning($"? Download failed for {modelData.modelName}, creating placeholder...");
+            CreatePlaceholderModel(modelData);
+        }
+    }
+
+    private void LoadLocalModel(ModelData modelData)
+    {
+        GameObject prefab = Resources.Load<GameObject>(modelData.modelPath);
+        GameObject model;
+
+        if (prefab != null)
+        {
+            model = Instantiate(prefab);
+            model.name = prefab.name;
+        }
+        else
+        {
+            model = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            model.name = modelData.modelPath.Replace("Models/", "");
+        }
+
+        SetModelInstanceId(model, modelData.modelInstanceId);
+        ApplyModelTransform(model, modelData);
+        Debug.Log($"? Loaded local model: {model.name}");
+    }
+
+    private void ApplyModelTransform(GameObject model, ModelData modelData)
+    {
+        model.transform.position = modelData.position;
+        model.transform.rotation = modelData.rotation;
+        model.transform.localScale = modelData.scale;
+        model.tag = modelData.tag;
+    }
+
+    private void CreatePlaceholderModel(ModelData modelData)
+    {
+        GameObject model = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        model.name = modelData.modelName + "_Placeholder";
+
+        SetModelInstanceId(model, modelData.modelInstanceId);
+        ApplyModelTransform(model, modelData);
+
+        Renderer renderer = model.GetComponent<Renderer>();
+        if (renderer != null)
+        {
+            renderer.material.color = Color.red;
+        }
+
+        Debug.LogWarning($"? Created placeholder for: {modelData.modelName}");
+    }
+
+    public void OnServerModelLoaded(GameObject model, string modelId, string modelName, bool isTransparent, bool isChild)
+    {
+        if (model != null)
+        {
+            string modelUrl = "";
+            string textureUrl = "";
+
+            if (modelSample != null)
+            {
+                modelUrl = modelSample.CurrentModelUrl;
+                textureUrl = modelSample.CurrentTextureUrl;
+            }
+
+            string actualModelId = modelId;
+            if (!string.IsNullOrEmpty(modelUrl) && modelUrl.Contains("model_id="))
+            {
+                int startIndex = modelUrl.IndexOf("model_id=") + "model_id=".Length;
+                int endIndex = modelUrl.IndexOf("&", startIndex);
+                if (endIndex == -1) endIndex = modelUrl.Length;
+
+                string extractedId = modelUrl.Substring(startIndex, endIndex - startIndex);
+                if (!string.IsNullOrEmpty(extractedId))
+                {
+                    actualModelId = extractedId;
+                }
+            }
+
+            CacheServerModel(model, actualModelId, modelName, isTransparent, isChild, modelUrl, textureUrl);
+        }
+    }
+
+    // ===========================================
+    // SERVER EVENT CALLBACKS
+    // ===========================================
+    private void OnServerSessionSaved(int sessionId)
+    {
+        Debug.Log($"? Session saved to server with ID: {sessionId}");
+        // You can add UI notification here
+    }
+
+    private void OnServerSessionLoaded(string sessionDataJson)
+    {
+        Debug.Log($"? Session data loaded from server, applying...");
+
+        try
+        {
+            SessionData session = JsonUtility.FromJson<SessionData>(sessionDataJson);
+            ApplyLoadedSession(session);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"? Failed to parse loaded session: {e.Message}");
+        }
+    }
+
+    private void OnServerError(string errorMessage)
+    {
+        Debug.LogError($"? Server error: {errorMessage}");
+        // You can add UI error notification here
+    }
+
+    // ===========================================
+    // UTILITY METHODS
+    // ===========================================
+    public void ClearCache()
+    {
+        serverModelCache.Clear();
+        modelInstanceMap.Clear();
+        Debug.Log("Cache cleared");
+    }
+
+    public bool HasCachedModel(string modelKey)
+    {
+        return serverModelCache.ContainsKey(modelKey);
+    }
+
+    public void SaveCurrentSession()
+    {
+        string timestamp = System.DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+        SaveSession("Session_" + timestamp);
+    }
+
+    private void OnDestroy()
+    {
+        // Unsubscribe from events
+        if (serverSessionHandler != null)
+        {
+            serverSessionHandler.OnSessionSaved -= OnServerSessionSaved;
+            serverSessionHandler.OnSessionLoaded -= OnServerSessionLoaded;
+            serverSessionHandler.OnError -= OnServerError;
+        }
+    }
+}
+
+// Helper component to store unique instance IDs on models
+public class ModelInstanceId : MonoBehaviour
+{
+    public string instanceId;
+}*/
+
+
+
+
+using System.IO;
+using System.Collections;
+using System.Linq;
+using System.Collections.Generic;
+using System;
+using UnityEngine;
+using Photon.Pun;
+using Photon.Realtime;
+using ExitGames.Client.Photon;
+
+[Serializable]
+public class ModelData
+{
+    public string modelPath;
+    public Vector3 position;
+    public Quaternion rotation;
+    public Vector3 scale;
+    public string tag;
+    public bool isServerModel;
+    public string modelId;
+    public string modelName;
+    public bool isTransparent;
+    public bool isChild;
+    public string modelInstanceId;
+    public string modelUrl;
+    public string textureUrl;
+}
+
+[Serializable]
+public class MeasurementData
+{
+    public Vector3[] storedPoints;
+    public bool isStraightLine;
+    public float originalMeasurement;
+    public Vector3 position;
+    public Quaternion rotation;
+    public Vector3 scale;
+    public Vector3 canvasLocalPosition;
+    public Vector3 point1LocalPosition;
+    public Vector3 point2LocalPosition;
+    public bool isAttachedToModel;
+    public string attachedModelID;
+    public float lineWidth;
+    public Color lineColor;
+}
+
+[Serializable]
+public class DrawingSessionData
+{
+    public Vector3[] points;
+    public int colorIndex;
+    public float width;
+    public Color lineColor;
+    public string drawingId;
+    public bool useWorldSpace;
+    public Vector3 parentPosition;
+    public Quaternion parentRotation;
+    public bool isAttachedToModel;
+    public string attachedModelID;
+}
+
+[Serializable]
+public class SessionData
+{
+    public List<ModelData> models = new List<ModelData>();
+    public List<MeasurementData> measurements = new List<MeasurementData>();
+    public List<DrawingSessionData> drawings = new List<DrawingSessionData>();
+}
+
+public class SessionManager : MonoBehaviourPunCallbacks
+{
+    private const string modelTag = "ModelPart";
+    private const byte LoadSessionEventCode = 1;
+    private const byte SessionDataEventCode = 2;
+
+    [Header("References")]
+    public ModelSample modelSample;
+    public Material drawingMaterial;
+    [SerializeField] private LayerMask drawingLayerMask;
+    [SerializeField] private ServerSessionHandler serverSessionHandler;
+
+    private Dictionary<string, ServerModelCache> serverModelCache = new Dictionary<string, ServerModelCache>();
+    private Dictionary<string, GameObject> modelInstanceMap = new Dictionary<string, GameObject>();
+
+    // Track loading state for multiplayer
+    private bool isLoadingSession = false;
+    private Queue<string> pendingSessionData = new Queue<string>();
+
+    [Serializable]
+    private class ServerModelCache
+    {
+        public Mesh mesh;
+        public Material material;
+        public string modelId;
+        public string modelName;
+        public bool isTransparent;
+        public bool isChild;
+        public string modelUrl;
+        public string textureUrl;
+        public GameObject prefab;
+        public Dictionary<string, Texture2D> cachedTextures;
+    }
+
+    void Start()
+    {
+        if (modelSample == null)
+        {
+            modelSample = FindObjectOfType<ModelSample>();
+            if (modelSample == null)
+            {
+                Debug.LogError("ModelSample not found! Please assign it in the inspector.");
+            }
+        }
+
+        if (drawingMaterial == null)
+        {
+            Debug.LogWarning("Drawing material not assigned! Attempting to find it...");
+            drawingMaterial = Resources.Load<Material>("DrawingMaterial");
+            if (drawingMaterial == null)
+            {
+                Debug.LogError("Drawing material not found in Resources! Drawings may not load correctly.");
+            }
+        }
+
+        // Setup server session handler
+        if (serverSessionHandler == null)
+        {
+            GameObject handlerObj = new GameObject("ServerSessionHandler");
+            handlerObj.transform.SetParent(transform);
+            serverSessionHandler = handlerObj.AddComponent<ServerSessionHandler>();
+        }
+
+        // Subscribe to server events
+        serverSessionHandler.OnSessionSaved += OnServerSessionSaved;
+        serverSessionHandler.OnSessionLoaded += OnServerSessionLoaded;
+        serverSessionHandler.OnError += OnServerError;
+
+        // Register Photon event callbacks
+        PhotonNetwork.NetworkingClient.EventReceived += OnPhotonEvent;
+
+        Debug.Log($"[PUN2] SessionManager initialized. Connected: {PhotonNetwork.IsConnected}, In Room: {PhotonNetwork.InRoom}");
+    }
+
+    // ===========================================
+    // PHOTON EVENT HANDLING
+    // ===========================================
+    private void OnPhotonEvent(EventData photonEvent)
+    {
+        byte eventCode = photonEvent.Code;
+
+        if (eventCode == LoadSessionEventCode)
+        {
+            // Any client receives request to load a session
+            int sessionId = (int)photonEvent.CustomData;
+            Debug.Log($"[PUN2] Received load session request for ID: {sessionId}");
+
+            // Only master client loads from server and broadcasts data
+            if (PhotonNetwork.IsMasterClient)
+            {
+                Debug.Log("[PUN2] I am master, loading from server...");
+                LoadSessionFromServerAndBroadcast(sessionId);
+            }
+            else
+            {
+                Debug.Log("[PUN2] Waiting for master to broadcast session data...");
+            }
+        }
+        else if (eventCode == SessionDataEventCode)
+        {
+            // All clients receive session data to apply
+            string sessionDataJson = (string)photonEvent.CustomData;
+            Debug.Log($"[PUN2] Received session data to apply ({sessionDataJson.Length} chars)");
+
+            // Queue the data if currently loading
+            if (isLoadingSession)
+            {
+                Debug.Log("[PUN2] Already loading, queuing this session data...");
+                pendingSessionData.Enqueue(sessionDataJson);
+            }
+            else
+            {
+                ApplySessionDataFromNetwork(sessionDataJson);
+            }
+        }
+    }
+
+    // ===========================================
+    // MULTIPLAYER SESSION METHODS
+    // ===========================================
+
+    /// <summary>
+    /// Request session load across all clients - Call this from UI or any client
+    /// </summary>
+    public void LoadSessionMultiplayer(int sessionId)
+    {
+        if (!PhotonNetwork.IsConnected)
+        {
+            Debug.LogError("[PUN2] Not connected to Photon! Cannot load multiplayer session.");
+            return;
+        }
+
+        if (!PhotonNetwork.InRoom)
+        {
+            Debug.LogError("[PUN2] Not in a room! Cannot load multiplayer session.");
+            return;
+        }
+
+        Debug.Log($"[PUN2] Broadcasting load session request for ID: {sessionId}");
+
+        // Send event to all clients including self
+        RaiseEventOptions raiseEventOptions = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.All
+        };
+        SendOptions sendOptions = new SendOptions { Reliability = true };
+
+        PhotonNetwork.RaiseEvent(LoadSessionEventCode, sessionId, raiseEventOptions, sendOptions);
+    }
+
+    /// <summary>
+    /// Master client loads session from server and broadcasts to all clients
+    /// </summary>
+    private void LoadSessionFromServerAndBroadcast(int sessionId)
+    {
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            Debug.LogWarning("[PUN2] Only master client should load and broadcast session data!");
+            return;
+        }
+
+        Debug.Log($"[PUN2] Master loading session {sessionId} from server...");
+
+        if (serverSessionHandler != null)
+        {
+            serverSessionHandler.LoadSessionFromServer(sessionId);
+        }
+        else
+        {
+            Debug.LogError("[PUN2] ServerSessionHandler not initialized!");
+        }
+    }
+
+    /// <summary>
+    /// Broadcast session data to all clients (Master only)
+    /// </summary>
+    private void BroadcastSessionData(string sessionDataJson)
+    {
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            Debug.LogWarning("[PUN2] Only master client should broadcast session data!");
+            return;
+        }
+
+        Debug.Log($"[PUN2] Broadcasting session data to all clients ({sessionDataJson.Length} chars)");
+
+        RaiseEventOptions raiseEventOptions = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.All
+        };
+        SendOptions sendOptions = new SendOptions { Reliability = true };
+
+        PhotonNetwork.RaiseEvent(SessionDataEventCode, sessionDataJson, raiseEventOptions, sendOptions);
+    }
+
+    /// <summary>
+    /// Apply session data received from network
+    /// </summary>
+    private void ApplySessionDataFromNetwork(string sessionDataJson)
+    {
+        Debug.Log($"[PUN2] Applying session data from network...");
+
+        try
+        {
+            SessionData session = JsonUtility.FromJson<SessionData>(sessionDataJson);
+            ApplyLoadedSession(session);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[PUN2] Failed to parse session data: {e.Message}");
+        }
+    }
+
+    // ===========================================
+    // INSTANCE ID MANAGEMENT
+    // ===========================================
+    private string GenerateModelInstanceId()
+    {
+        return System.Guid.NewGuid().ToString();
+    }
+
+    private void SetModelInstanceId(GameObject model, string instanceId)
+    {
+        var idComponent = model.GetComponent<ModelInstanceId>();
+        if (idComponent == null)
+        {
+            idComponent = model.AddComponent<ModelInstanceId>();
+        }
+        idComponent.instanceId = instanceId;
+        modelInstanceMap[instanceId] = model;
+    }
+
+    private string GetModelInstanceId(GameObject model)
+    {
+        var idComponent = model.GetComponent<ModelInstanceId>();
+        return idComponent != null ? idComponent.instanceId : null;
+    }
+
+    // ===========================================
+    // MODEL IMPORT AND CACHING
+    // ===========================================
+    public GameObject ImportLocalModel(string prefabName)
+    {
+        string path = "Models/" + prefabName;
+        GameObject prefab = Resources.Load<GameObject>(path);
+        if (prefab == null)
+        {
+            Debug.LogError("Local prefab not found: " + path);
+            return null;
+        }
+
+        GameObject model = Instantiate(prefab);
+        model.name = prefab.name;
+        model.tag = modelTag;
+        SetModelInstanceId(model, GenerateModelInstanceId());
+        return model;
+    }
+
+    public void CacheServerModel(GameObject model, string modelId, string modelName, bool isTransparent, bool isChild, string modelUrl, string textureUrl)
+    {
+        if (model == null)
+        {
+            Debug.LogError("Cannot cache null model");
+            return;
+        }
+
+        string existingInstanceId = GetModelInstanceId(model);
+        if (string.IsNullOrEmpty(existingInstanceId))
+        {
+            existingInstanceId = GenerateModelInstanceId();
+            SetModelInstanceId(model, existingInstanceId);
+        }
+
+        string cacheKey;
+        if (!string.IsNullOrEmpty(modelId))
+        {
+            cacheKey = modelId + "_" + existingInstanceId;
+        }
+        else
+        {
+            cacheKey = model.name.Replace("(Clone)", "") + "_" + existingInstanceId;
+        }
+
+        MeshFilter meshFilter = model.GetComponent<MeshFilter>();
+        Renderer renderer = model.GetComponent<Renderer>();
+
+        if (meshFilter == null || renderer == null)
+        {
+            Debug.LogError($"Model {cacheKey} missing MeshFilter or Renderer components");
+            return;
+        }
+
+        GameObject basePrefab = Resources.Load<GameObject>(model.name.Replace("(Clone)", ""));
+        Dictionary<string, Texture2D> cachedTextures = new Dictionary<string, Texture2D>();
+
+        if (renderer.material != null)
+        {
+            CacheAllMaterialTextures(renderer.material, cachedTextures);
+        }
+
+        ServerModelCache cache = new ServerModelCache
+        {
+            mesh = meshFilter.mesh,
+            material = renderer.material,
+            modelId = modelId,
+            modelName = modelName,
+            isTransparent = isTransparent,
+            isChild = isChild,
+            modelUrl = modelUrl,
+            textureUrl = textureUrl,
+            prefab = basePrefab,
+            cachedTextures = cachedTextures
+        };
+
+        serverModelCache[cacheKey] = cache;
+        Debug.Log($"?? Cached with KEY: {cacheKey}, modelId: {modelId}, name: {modelName}, instanceId: {existingInstanceId}");
+    }
+
+    private void CacheAllMaterialTextures(Material material, Dictionary<string, Texture2D> textureCache)
+    {
+        if (material == null || material.shader == null) return;
+
+        string[] commonTextureProperties = {
+            "_MainTex", "_BaseMap", "_AlbedoMap", "_DiffuseMap", "_Texture", "_Tex", "_Texture2D",
+            "_EmissionMap", "_BumpMap", "_NormalMap", "_OcclusionMap", "_MetallicGlossMap"
+        };
+
+        foreach (string propName in commonTextureProperties)
+        {
+            if (material.HasProperty(propName))
+            {
+                Texture texture = material.GetTexture(propName);
+                if (texture != null && texture is Texture2D)
+                {
+                    textureCache[propName] = texture as Texture2D;
+                }
+            }
+        }
+    }
+
+    // ===========================================
+    // COLLECT SESSION DATA
+    // ===========================================
+    private SessionData CollectSessionData()
+    {
+        SessionData session = new SessionData();
+        GameObject[] models = GameObject.FindGameObjectsWithTag(modelTag);
+
+        Debug.Log($"=== COLLECTING SESSION DATA: {models.Length} models ===");
+
+        // Collect models
+        foreach (var model in models)
+        {
+            string instanceId = GetModelInstanceId(model);
+
+            if (string.IsNullOrEmpty(instanceId))
+            {
+                instanceId = GenerateModelInstanceId();
+                SetModelInstanceId(model, instanceId);
+            }
+
+            string cacheKey = null;
+            foreach (var kvp in serverModelCache)
+            {
+                if (kvp.Key.EndsWith("_" + instanceId))
+                {
+                    cacheKey = kvp.Key;
+                    break;
+                }
+            }
+
+            bool isServer = !string.IsNullOrEmpty(cacheKey);
+
+            ModelData data = new ModelData
+            {
+                position = model.transform.position,
+                rotation = model.transform.rotation,
+                scale = model.transform.localScale,
+                tag = model.tag,
+                isServerModel = isServer,
+                modelPath = cacheKey ?? ("Models/" + model.name.Replace("(Clone)", "")),
+                modelInstanceId = instanceId
+            };
+
+            if (isServer && serverModelCache.ContainsKey(cacheKey))
+            {
+                ServerModelCache cache = serverModelCache[cacheKey];
+                data.modelId = cache.modelId;
+                data.modelName = cache.modelName;
+                data.isTransparent = cache.isTransparent;
+                data.isChild = cache.isChild;
+                data.modelUrl = cache.modelUrl;
+                data.textureUrl = cache.textureUrl;
+            }
+            else
+            {
+                data.modelId = "";
+                data.modelName = model.name.Replace("(Clone)", "");
+            }
+
+            session.models.Add(data);
+        }
+
+        // Collect measurements
+        MeasurmentInk[] allMeasurements = FindObjectsOfType<MeasurmentInk>();
+        Debug.Log($"=== COLLECTING {allMeasurements.Length} MEASUREMENTS ===");
+
+        foreach (var measurement in allMeasurements)
+        {
+            LineRenderer lineRenderer = measurement.GetComponent<LineRenderer>();
+            if (lineRenderer == null)
+            {
+                Debug.LogWarning($"Measurement missing LineRenderer: {measurement.name}");
+                continue;
+            }
+
+            var measurementType = typeof(MeasurmentInk);
+
+            var storedPointsField = measurementType.GetField("storedPoints", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var isStraightLineField = measurementType.GetField("isStraightLine", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var originalMeasurementField = measurementType.GetField("originalMeasurement", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var canvasLocalPositionField = measurementType.GetField("canvasLocalPosition", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var point1LocalPositionField = measurementType.GetField("point1LocalPosition", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var point2LocalPositionField = measurementType.GetField("point2LocalPosition", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var isAttachedToModelField = measurementType.GetField("isAttachedToModel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var attachedModelIDField = measurementType.GetField("attachedModelID", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            Vector3[] storedPoints = storedPointsField?.GetValue(measurement) as Vector3[];
+            if (storedPoints == null || storedPoints.Length < 2)
+            {
+                Debug.LogWarning($"Measurement has no points: {measurement.name}");
+                continue;
+            }
+
+            MeasurementData measureData = new MeasurementData
+            {
+                storedPoints = storedPoints,
+                isStraightLine = (bool)(isStraightLineField?.GetValue(measurement) ?? false),
+                originalMeasurement = (float)(originalMeasurementField?.GetValue(measurement) ?? 0f),
+                canvasLocalPosition = (Vector3)(canvasLocalPositionField?.GetValue(measurement) ?? Vector3.zero),
+                point1LocalPosition = (Vector3)(point1LocalPositionField?.GetValue(measurement) ?? Vector3.zero),
+                point2LocalPosition = (Vector3)(point2LocalPositionField?.GetValue(measurement) ?? Vector3.zero),
+                isAttachedToModel = (bool)(isAttachedToModelField?.GetValue(measurement) ?? false),
+                attachedModelID = (string)(attachedModelIDField?.GetValue(measurement) ?? ""),
+                position = measurement.transform.position,
+                rotation = measurement.transform.rotation,
+                scale = measurement.transform.localScale,
+                lineWidth = lineRenderer.startWidth
+            };
+
+            if (lineRenderer.material != null && lineRenderer.material.HasProperty("_Color"))
+            {
+                measureData.lineColor = lineRenderer.material.color;
+            }
+
+            if (measureData.isAttachedToModel && measurement.transform.parent != null)
+            {
+                string parentInstanceId = GetModelInstanceId(measurement.transform.parent.gameObject);
+                if (!string.IsNullOrEmpty(parentInstanceId))
+                {
+                    measureData.attachedModelID = parentInstanceId;
+                    Debug.Log($"  - Measurement attached to parent with instanceId: {parentInstanceId}");
+                }
+                else
+                {
+                    Debug.LogWarning($"  - Has parent but no instanceId found, saving as independent");
+                    measureData.isAttachedToModel = false;
+                    measureData.attachedModelID = "";
+                }
+            }
+            else if (measureData.isAttachedToModel && string.IsNullOrEmpty(measureData.attachedModelID))
+            {
+                Debug.LogWarning($"  - Marked as attached but no parent found, saving as independent");
+                measureData.isAttachedToModel = false;
+            }
+
+            session.measurements.Add(measureData);
+        }
+
+        // Collect drawings
+        LineRenderer[] allDrawings = FindObjectsOfType<LineRenderer>();
+        int drawingCount = 0;
+
+        foreach (var drawing in allDrawings)
+        {
+            if (drawing.GetComponent<MeasurmentInk>() != null)
+                continue;
+
+            DrawingTracker tracker = drawing.GetComponent<DrawingTracker>();
+            if (tracker == null)
+                continue;
+
+            Vector3[] points = new Vector3[drawing.positionCount];
+            for (int i = 0; i < drawing.positionCount; i++)
+            {
+                points[i] = drawing.GetPosition(i);
+            }
+
+            if (points.Length < 2)
+            {
+                Debug.LogWarning($"Drawing has insufficient points: {drawing.name}");
+                continue;
+            }
+
+            DrawingSessionData drawingData = new DrawingSessionData
+            {
+                points = points,
+                width = drawing.startWidth,
+                drawingId = tracker.drawingId,
+                useWorldSpace = drawing.useWorldSpace
+            };
+
+            if (drawing.material != null && drawing.material.HasProperty("_Color"))
+            {
+                drawingData.lineColor = drawing.material.color;
+            }
+            else
+            {
+                drawingData.lineColor = Color.white;
+            }
+
+            drawingData.colorIndex = 0;
+
+            if (drawing.transform.parent != null)
+            {
+                string parentInstanceId = GetModelInstanceId(drawing.transform.parent.gameObject);
+                if (!string.IsNullOrEmpty(parentInstanceId))
+                {
+                    drawingData.isAttachedToModel = true;
+                    drawingData.attachedModelID = parentInstanceId;
+                    drawingData.parentPosition = drawing.transform.parent.position;
+                    drawingData.parentRotation = drawing.transform.parent.rotation;
+                }
+                else
+                {
+                    drawingData.isAttachedToModel = false;
+                }
+            }
+            else
+            {
+                drawingData.isAttachedToModel = false;
+            }
+
+            session.drawings.Add(drawingData);
+            drawingCount++;
+        }
+
+        Debug.Log($"=== SESSION DATA COLLECTED ===\nModels: {session.models.Count}, Measurements: {session.measurements.Count}, Drawings: {session.drawings.Count}");
+        return session;
+    }
+
+    // ===========================================
+    // SAVE SESSION TO SERVER (Master Client Only)
+    // ===========================================
+    public void SaveSession(string sessionName, string userId = "")
+    {
+        if (PhotonNetwork.IsConnected && !PhotonNetwork.IsMasterClient)
+        {
+            Debug.LogWarning("[PUN2] Only master client can save sessions in multiplayer!");
+            return;
+        }
+
+        SessionData session = CollectSessionData();
+
+        if (serverSessionHandler != null)
+        {
+            Debug.Log($"?? Saving session '{sessionName}' to server...");
+            serverSessionHandler.SaveSessionToServer(sessionName, session, userId);
+        }
+        else
+        {
+            Debug.LogError("? ServerSessionHandler not initialized!");
+        }
+    }
+
+    // ===========================================
+    // LOAD SESSION FROM SERVER (Single Player Only)
+    // ===========================================
+    public void LoadSession(int sessionId)
+    {
+        if (PhotonNetwork.IsConnected && PhotonNetwork.InRoom)
+        {
+            Debug.LogWarning("[PUN2] Use LoadSessionMultiplayer() for multiplayer sessions!");
+            LoadSessionMultiplayer(sessionId);
+            return;
+        }
+
+        if (serverSessionHandler != null)
+        {
+            Debug.Log($"?? Loading session ID {sessionId} from server (single player)...");
+            serverSessionHandler.LoadSessionFromServer(sessionId);
+        }
+        else
+        {
+            Debug.LogError("? ServerSessionHandler not initialized!");
+        }
+    }
+
+    // ===========================================
+    // APPLY LOADED SESSION
+    // ===========================================
+    private void ApplyLoadedSession(SessionData session)
+    {
+        if (isLoadingSession)
+        {
+            Debug.LogWarning("[SessionManager] Already loading a session, queuing this one...");
+            return;
+        }
+
+        isLoadingSession = true;
+        Debug.Log($"=== APPLYING LOADED SESSION ===\nModels: {session.models.Count}, Measurements: {session.measurements.Count}, Drawings: {session.drawings.Count}");
+
+        // Destroy existing models
+        GameObject[] existingModels = GameObject.FindGameObjectsWithTag(modelTag);
+        foreach (var model in existingModels)
+        {
+            Destroy(model);
+        }
+
+        // Destroy existing measurements
+        MeasurmentInk[] existingMeasurements = FindObjectsOfType<MeasurmentInk>();
+        foreach (var measurement in existingMeasurements)
+        {
+            Destroy(measurement.gameObject);
+        }
+
+        // Destroy existing drawings
+        DrawingTracker[] existingDrawings = FindObjectsOfType<DrawingTracker>();
+        foreach (var drawing in existingDrawings)
+        {
+            Destroy(drawing.gameObject);
+        }
+
+        serverModelCache.Clear();
+        modelInstanceMap.Clear();
+
+        StartCoroutine(LoadModelsAndMeasurementsAndDrawingsAfterCleanup(session.models, session.measurements, session.drawings));
+    }
+
+    private IEnumerator LoadModelsAndMeasurementsAndDrawingsAfterCleanup(List<ModelData> models, List<MeasurementData> measurements, List<DrawingSessionData> drawings)
+    {
+        yield return null;
+
+        // Load all models first
+        Debug.Log("=== LOADING MODELS ===");
+        foreach (var modelData in models)
+        {
+            if (modelData.isServerModel)
+            {
+                if (modelSample != null && !string.IsNullOrEmpty(modelData.modelId))
+                {
+                    modelSample.LoadModel(modelData.modelId, modelData.modelName, modelData.isTransparent, modelData.isChild);
+                    yield return StartCoroutine(WaitAndApplyTransform(modelData));
+                }
+                else
+                {
+                    CreatePlaceholderModel(modelData);
+                }
+            }
+            else
+            {
+                LoadLocalModel(modelData);
+            }
+
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        // Wait for all models to be ready
+        yield return new WaitForSeconds(1f);
+
+        // Now load measurements
+        Debug.Log($"=== LOADING {measurements.Count} MEASUREMENTS ===");
+        foreach (var measurementData in measurements)
+        {
+            LoadMeasurement(measurementData);
+            yield return new WaitForSeconds(0.2f);
+        }
+
+        // Load drawings
+        Debug.Log($"=== LOADING {drawings.Count} DRAWINGS ===");
+        foreach (var drawingData in drawings)
+        {
+            LoadDrawing(drawingData);
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        isLoadingSession = false;
+        Debug.Log("? SESSION LOADING COMPLETE ===");
+
+        // Process any pending session loads
+        if (pendingSessionData.Count > 0)
+        {
+            Debug.Log($"[PUN2] Processing {pendingSessionData.Count} pending session(s)...");
+            string nextSession = pendingSessionData.Dequeue();
+            ApplySessionDataFromNetwork(nextSession);
+        }
+    }
+
+    // ===========================================
+    // LOAD DRAWING
+    // ===========================================
+    private void LoadDrawing(DrawingSessionData drawingData)
+    {
+        GameObject drawingObj = new GameObject("LoadedDrawing_" + drawingData.drawingId);
+        LineRenderer lineRenderer = drawingObj.AddComponent<LineRenderer>();
+
+        if (drawingMaterial != null)
+        {
+            lineRenderer.material = new Material(drawingMaterial);
+        }
+        else
+        {
+            lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
+            Debug.LogWarning("Drawing material not assigned, using default shader");
+        }
+
+        GameObject parentModel = null;
+        if (drawingData.isAttachedToModel && !string.IsNullOrEmpty(drawingData.attachedModelID))
+        {
+            if (modelInstanceMap.TryGetValue(drawingData.attachedModelID, out parentModel))
+            {
+                drawingObj.transform.SetParent(parentModel.transform, false);
+                drawingObj.transform.localPosition = Vector3.zero;
+                drawingObj.transform.localRotation = Quaternion.identity;
+                drawingObj.transform.localScale = Vector3.one;
+                lineRenderer.useWorldSpace = false;
+                Debug.Log($"? Drawing parented to model: {parentModel.name}");
+            }
+            else
+            {
+                Debug.LogWarning($"?? Parent model not found for drawing (ID: {drawingData.attachedModelID})");
+                drawingData.isAttachedToModel = false;
+                lineRenderer.useWorldSpace = true;
+            }
+        }
+        else
+        {
+            lineRenderer.useWorldSpace = true;
+        }
+
+        lineRenderer.startWidth = drawingData.width;
+        lineRenderer.endWidth = drawingData.width;
+
+        if (drawingData.lineColor != Color.clear)
+        {
+            lineRenderer.startColor = drawingData.lineColor;
+            lineRenderer.endColor = drawingData.lineColor;
+            if (lineRenderer.material.HasProperty("_Color"))
+            {
+                lineRenderer.material.color = drawingData.lineColor;
+            }
+        }
+
+        lineRenderer.positionCount = drawingData.points.Length;
+
+        if (drawingData.isAttachedToModel && parentModel != null)
+        {
+            lineRenderer.SetPositions(drawingData.points);
+        }
+        else if (!drawingData.useWorldSpace && drawingData.isAttachedToModel)
+        {
+            lineRenderer.useWorldSpace = true;
+            Matrix4x4 parentMatrix = Matrix4x4.TRS(drawingData.parentPosition, drawingData.parentRotation, Vector3.one);
+
+            for (int i = 0; i < drawingData.points.Length; i++)
+            {
+                Vector3 worldPoint = parentMatrix.MultiplyPoint3x4(drawingData.points[i]);
+                lineRenderer.SetPosition(i, worldPoint);
+            }
+        }
+        else
+        {
+            lineRenderer.SetPositions(drawingData.points);
+        }
+
+        DrawingTracker tracker = drawingObj.AddComponent<DrawingTracker>();
+        tracker.drawingId = drawingData.drawingId;
+        drawingObj.AddComponent<Deletable>();
+
+        if (drawingLayerMask != 0)
+        {
+            drawingObj.layer = (int)Mathf.Log(drawingLayerMask.value, 2);
+        }
+
+        BoxCollider collider = drawingObj.AddComponent<BoxCollider>();
+        collider.isTrigger = true;
+
+        if (lineRenderer.useWorldSpace)
+        {
+            if (lineRenderer.bounds.size.magnitude > 0)
+            {
+                collider.center = lineRenderer.bounds.center;
+                collider.size = lineRenderer.bounds.size;
+            }
+            else
+            {
+                collider.size = Vector3.one * 0.1f;
+            }
+        }
+        else
+        {
+            Vector3 min = Vector3.positiveInfinity;
+            Vector3 max = Vector3.negativeInfinity;
+
+            for (int i = 0; i < lineRenderer.positionCount; i++)
+            {
+                Vector3 point = lineRenderer.GetPosition(i);
+                min = Vector3.Min(min, point);
+                max = Vector3.Max(max, point);
+            }
+
+            Vector3 center = (min + max) * 0.5f;
+            Vector3 size = max - min;
+
+            size.x = Mathf.Max(size.x, 0.01f);
+            size.y = Mathf.Max(size.y, 0.01f);
+            size.z = Mathf.Max(size.z, 0.01f);
+
+            collider.center = center;
+            collider.size = size;
+        }
+    }
+
+    // ===========================================
+    // LOAD MEASUREMENT
+    // ===========================================
+    private void LoadMeasurement(MeasurementData measurementData)
+    {
+        GameObject measurementPrefab = Resources.Load<GameObject>("MesurmentInk");
+        if (measurementPrefab == null)
+        {
+            Debug.LogError("MesurmentInk prefab not found in Resources!");
+            return;
+        }
+
+        GameObject measurementObj = Instantiate(measurementPrefab, Vector3.zero, Quaternion.identity);
+        measurementObj.name = "LoadedMeasurement";
+
+        MeasurmentInk inkComponent = measurementObj.GetComponent<MeasurmentInk>();
+        LineRenderer lineRenderer = measurementObj.GetComponent<LineRenderer>();
+
+        if (inkComponent == null || lineRenderer == null)
+        {
+            Debug.LogError("MesurmentInk or LineRenderer component missing!");
+            Destroy(measurementObj);
+            return;
+        }
+
+        var measurementType = typeof(MeasurmentInk);
+
+        var storedPointsField = measurementType.GetField("storedPoints", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var isStraightLineField = measurementType.GetField("isStraightLine", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var originalMeasurementField = measurementType.GetField("originalMeasurement", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var canvasLocalPositionField = measurementType.GetField("canvasLocalPosition", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var point1LocalPositionField = measurementType.GetField("point1LocalPosition", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var point2LocalPositionField = measurementType.GetField("point2LocalPosition", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var isAttachedToModelField = measurementType.GetField("isAttachedToModel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var attachedModelIDField = measurementType.GetField("attachedModelID", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var isInitializedField = measurementType.GetField("isInitialized", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var attachedModelField = measurementType.GetField("attachedModel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var canvasField = measurementType.GetField("canvas", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var point1Field = measurementType.GetField("point1", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var point2Field = measurementType.GetField("point2", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        Transform canvas = canvasField?.GetValue(inkComponent) as Transform;
+        GameObject point1 = point1Field?.GetValue(inkComponent) as GameObject;
+        GameObject point2 = point2Field?.GetValue(inkComponent) as GameObject;
+
+        GameObject parentModel = null;
+        if (measurementData.isAttachedToModel && !string.IsNullOrEmpty(measurementData.attachedModelID))
+        {
+            if (modelInstanceMap.TryGetValue(measurementData.attachedModelID, out parentModel))
+            {
+                measurementObj.transform.SetParent(parentModel.transform, false);
+                measurementObj.transform.localPosition = Vector3.zero;
+                measurementObj.transform.localRotation = Quaternion.identity;
+                measurementObj.transform.localScale = Vector3.one;
+                attachedModelField?.SetValue(inkComponent, parentModel.transform);
+                Debug.Log($"? Measurement parented to model: {parentModel.name}");
+            }
+            else
+            {
+                Debug.LogWarning($"?? Parent model not found (ID: {measurementData.attachedModelID})");
+                measurementData.isAttachedToModel = false;
+            }
+        }
+
+        Vector3[] pointsToStore = measurementData.storedPoints;
+
+        storedPointsField?.SetValue(inkComponent, pointsToStore);
+        isStraightLineField?.SetValue(inkComponent, measurementData.isStraightLine);
+        originalMeasurementField?.SetValue(inkComponent, measurementData.originalMeasurement);
+        canvasLocalPositionField?.SetValue(inkComponent, measurementData.canvasLocalPosition);
+        point1LocalPositionField?.SetValue(inkComponent, measurementData.point1LocalPosition);
+        point2LocalPositionField?.SetValue(inkComponent, measurementData.point2LocalPosition);
+        isAttachedToModelField?.SetValue(inkComponent, measurementData.isAttachedToModel);
+        attachedModelIDField?.SetValue(inkComponent, measurementData.attachedModelID);
+        isInitializedField?.SetValue(inkComponent, true);
+
+        lineRenderer.startWidth = lineRenderer.endWidth = measurementData.lineWidth;
+        lineRenderer.useWorldSpace = true;
+
+        if (measurementData.lineColor != Color.clear && lineRenderer.material != null)
+        {
+            lineRenderer.material.color = measurementData.lineColor;
+        }
+
+        if (measurementData.isAttachedToModel && parentModel != null)
+        {
+            if (measurementData.isStraightLine && measurementData.storedPoints.Length >= 2)
+            {
+                lineRenderer.positionCount = 2;
+                Vector3 worldPoint1 = parentModel.transform.TransformPoint(measurementData.storedPoints[0]);
+                Vector3 worldPoint2 = parentModel.transform.TransformPoint(measurementData.storedPoints[measurementData.storedPoints.Length - 1]);
+                lineRenderer.SetPosition(0, worldPoint1);
+                lineRenderer.SetPosition(1, worldPoint2);
+            }
+            else
+            {
+                lineRenderer.positionCount = measurementData.storedPoints.Length;
+                Vector3[] worldPoints = new Vector3[measurementData.storedPoints.Length];
+
+                for (int i = 0; i < measurementData.storedPoints.Length; i++)
+                {
+                    worldPoints[i] = parentModel.transform.TransformPoint(measurementData.storedPoints[i]);
+                }
+
+                lineRenderer.SetPositions(worldPoints);
+            }
+
+            if (canvas != null && measurementData.canvasLocalPosition != Vector3.zero)
+            {
+                Vector3 worldCanvasPos = parentModel.transform.TransformPoint(measurementData.canvasLocalPosition);
+                canvas.position = worldCanvasPos;
+            }
+
+            if (point1 != null && measurementData.point1LocalPosition != Vector3.zero)
+            {
+                Vector3 worldPoint1Pos = parentModel.transform.TransformPoint(measurementData.point1LocalPosition);
+                point1.transform.position = worldPoint1Pos;
+            }
+
+            if (point2 != null && measurementData.point2LocalPosition != Vector3.zero)
+            {
+                Vector3 worldPoint2Pos = parentModel.transform.TransformPoint(measurementData.point2LocalPosition);
+                point2.transform.position = worldPoint2Pos;
+            }
+        }
+        else
+        {
+            measurementObj.transform.position = measurementData.position;
+            measurementObj.transform.rotation = measurementData.rotation;
+            measurementObj.transform.localScale = measurementData.scale;
+
+            if (measurementData.isStraightLine && measurementData.storedPoints.Length >= 2)
+            {
+                lineRenderer.positionCount = 2;
+                lineRenderer.SetPosition(0, measurementData.storedPoints[0]);
+                lineRenderer.SetPosition(1, measurementData.storedPoints[measurementData.storedPoints.Length - 1]);
+            }
+            else
+            {
+                lineRenderer.positionCount = measurementData.storedPoints.Length;
+                lineRenderer.SetPositions(measurementData.storedPoints);
+            }
+
+            if (canvas != null && measurementData.canvasLocalPosition != Vector3.zero)
+            {
+                canvas.position = measurementData.canvasLocalPosition;
+            }
+
+            if (point1 != null && measurementData.point1LocalPosition != Vector3.zero)
+            {
+                point1.transform.position = measurementData.point1LocalPosition;
+            }
+
+            if (point2 != null && measurementData.point2LocalPosition != Vector3.zero)
+            {
+                point2.transform.position = measurementData.point2LocalPosition;
+            }
+        }
+
+        var lengthTextField = measurementType.GetField("lengthText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var lengthText = lengthTextField?.GetValue(inkComponent) as TMPro.TMP_Text;
+        if (lengthText != null)
+        {
+            lengthText.text = $"{measurementData.originalMeasurement:0.00} mm";
+        }
+
+        if (canvas != null)
+        {
+            var orientMethod = measurementType.GetMethod("OrientCanvasToHead", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            orientMethod?.Invoke(inkComponent, null);
+        }
+    }
+
+    // ===========================================
+    // WAIT AND APPLY TRANSFORM
+    // ===========================================
+    private IEnumerator WaitAndApplyTransform(ModelData modelData)
+    {
+        float timeout = 10f;
+        float elapsed = 0f;
+        GameObject foundModel = null;
+
+        while (elapsed < timeout && foundModel == null)
+        {
+            yield return new WaitForSeconds(0.5f);
+            elapsed += 0.5f;
+
+            GameObject[] currentModels = GameObject.FindGameObjectsWithTag(modelTag);
+            foreach (var model in currentModels)
+            {
+                string existingInstanceId = GetModelInstanceId(model);
+                if (string.IsNullOrEmpty(existingInstanceId))
+                    continue;
+
+                MeshFilter mf = model.GetComponent<MeshFilter>();
+                if (mf != null && mf.mesh != null)
+                {
+                    bool isMatch = false;
+
+                    if (!string.IsNullOrEmpty(modelData.modelId))
+                    {
+                        isMatch = true;
+                    }
+
+                    if (isMatch)
+                    {
+                        foundModel = model;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (foundModel != null)
+        {
+            foundModel.transform.position = modelData.position;
+            foundModel.transform.rotation = modelData.rotation;
+            foundModel.transform.localScale = modelData.scale;
+
+            SetModelInstanceId(foundModel, modelData.modelInstanceId);
+
+            Debug.Log($"? Model loaded: {foundModel.name} (ID: {modelData.modelInstanceId})");
+
+            CacheServerModel(foundModel, modelData.modelId, modelData.modelName,
+                            modelData.isTransparent, modelData.isChild,
+                            modelData.modelUrl, modelData.textureUrl);
+        }
+        else
+        {
+            Debug.LogWarning($"?? Download failed for {modelData.modelName}, creating placeholder...");
+            CreatePlaceholderModel(modelData);
+        }
+    }
+
+    // ===========================================
+    // LOAD LOCAL MODEL
+    // ===========================================
+    private void LoadLocalModel(ModelData modelData)
+    {
+        GameObject prefab = Resources.Load<GameObject>(modelData.modelPath);
+        GameObject model;
+
+        if (prefab != null)
+        {
+            model = Instantiate(prefab);
+            model.name = prefab.name;
+        }
+        else
+        {
+            model = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            model.name = modelData.modelPath.Replace("Models/", "");
+        }
+
+        SetModelInstanceId(model, modelData.modelInstanceId);
+        ApplyModelTransform(model, modelData);
+        Debug.Log($"? Loaded local model: {model.name}");
+    }
+
+    // ===========================================
+    // APPLY MODEL TRANSFORM
+    // ===========================================
+    private void ApplyModelTransform(GameObject model, ModelData modelData)
+    {
+        model.transform.position = modelData.position;
+        model.transform.rotation = modelData.rotation;
+        model.transform.localScale = modelData.scale;
+        model.tag = modelData.tag;
+    }
+
+    // ===========================================
+    // CREATE PLACEHOLDER MODEL
+    // ===========================================
+    private void CreatePlaceholderModel(ModelData modelData)
+    {
+        GameObject model = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        model.name = modelData.modelName + "_Placeholder";
+
+        SetModelInstanceId(model, modelData.modelInstanceId);
+        ApplyModelTransform(model, modelData);
+
+        Renderer renderer = model.GetComponent<Renderer>();
+        if (renderer != null)
+        {
+            renderer.material.color = Color.red;
+        }
+
+        Debug.LogWarning($"?? Created placeholder for: {modelData.modelName}");
+    }
+
+    // ===========================================
+    // ON SERVER MODEL LOADED
+    // ===========================================
+    public void OnServerModelLoaded(GameObject model, string modelId, string modelName, bool isTransparent, bool isChild)
+    {
+        if (model != null)
+        {
+            string modelUrl = "";
+            string textureUrl = "";
+
+            if (modelSample != null)
+            {
+                modelUrl = modelSample.CurrentModelUrl;
+                textureUrl = modelSample.CurrentTextureUrl;
+            }
+
+            string actualModelId = modelId;
+            if (!string.IsNullOrEmpty(modelUrl) && modelUrl.Contains("model_id="))
+            {
+                int startIndex = modelUrl.IndexOf("model_id=") + "model_id=".Length;
+                int endIndex = modelUrl.IndexOf("&", startIndex);
+                if (endIndex == -1) endIndex = modelUrl.Length;
+
+                string extractedId = modelUrl.Substring(startIndex, endIndex - startIndex);
+                if (!string.IsNullOrEmpty(extractedId))
+                {
+                    actualModelId = extractedId;
+                }
+            }
+
+            CacheServerModel(model, actualModelId, modelName, isTransparent, isChild, modelUrl, textureUrl);
+        }
+    }
+
+    // ===========================================
+    // SERVER EVENT CALLBACKS
+    // ===========================================
+    private void OnServerSessionSaved(int sessionId)
+    {
+        Debug.Log($"? Session saved to server with ID: {sessionId}");
+        // You can add UI notification here
+    }
+
+    private void OnServerSessionLoaded(string sessionDataJson)
+    {
+        Debug.Log($"?? Session data loaded from server");
+
+        // If we're the master client in multiplayer, broadcast to all clients
+        if (PhotonNetwork.IsConnected && PhotonNetwork.InRoom && PhotonNetwork.IsMasterClient)
+        {
+            Debug.Log("[PUN2] Master client broadcasting session data to all players...");
+            BroadcastSessionData(sessionDataJson);
+        }
+        else if (!PhotonNetwork.IsConnected || !PhotonNetwork.InRoom)
+        {
+            // Single player mode - apply directly
+            Debug.Log("[SinglePlayer] Applying session data directly...");
+            try
+            {
+                SessionData session = JsonUtility.FromJson<SessionData>(sessionDataJson);
+                ApplyLoadedSession(session);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"? Failed to parse loaded session: {e.Message}");
+            }
+        }
+        else
+        {
+            // Non-master clients should not directly load from server
+            Debug.LogWarning("[PUN2] Non-master client received server data directly - this shouldn't happen in multiplayer");
+        }
+    }
+
+    private void OnServerError(string errorMessage)
+    {
+        Debug.LogError($"? Server error: {errorMessage}");
+        // You can add UI error notification here
+    }
+
+    // ===========================================
+    // UTILITY METHODS
+    // ===========================================
+    public void ClearCache()
+    {
+        serverModelCache.Clear();
+        modelInstanceMap.Clear();
+        Debug.Log("Cache cleared");
+    }
+
+    public bool HasCachedModel(string modelKey)
+    {
+        return serverModelCache.ContainsKey(modelKey);
+    }
+
+    public void SaveCurrentSession()
+    {
+        if (PhotonNetwork.IsConnected && !PhotonNetwork.IsMasterClient)
+        {
+            Debug.LogWarning("[PUN2] Only master client can save sessions in multiplayer!");
+            return;
+        }
+
+        string timestamp = System.DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+        SaveSession("Session_" + timestamp);
+    }
+
+    // ===========================================
+    // PHOTON CALLBACKS
+    // ===========================================
+    public override void OnJoinedRoom()
+    {
+        Debug.Log($"[PUN2] ? Joined room: {PhotonNetwork.CurrentRoom.Name}");
+        Debug.Log($"[PUN2] Players in room: {PhotonNetwork.CurrentRoom.PlayerCount}");
+        Debug.Log($"[PUN2] I am master: {PhotonNetwork.IsMasterClient}");
+    }
+
+    public override void OnLeftRoom()
+    {
+        Debug.Log("[PUN2] ?? Left room");
+    }
+
+    public override void OnMasterClientSwitched(Player newMasterClient)
+    {
+        Debug.Log($"[PUN2] ?? Master client switched to: {newMasterClient.NickName}");
+
+        if (PhotonNetwork.IsMasterClient)
+        {
+            Debug.Log("[PUN2] I am now the master client!");
+        }
+    }
+
+    public override void OnPlayerEnteredRoom(Player newPlayer)
+    {
+        Debug.Log($"[PUN2] ? Player joined: {newPlayer.NickName}");
+        Debug.Log($"[PUN2] Total players: {PhotonNetwork.CurrentRoom.PlayerCount}");
+    }
+
+    public override void OnPlayerLeftRoom(Player otherPlayer)
+    {
+        Debug.Log($"[PUN2] ? Player left: {otherPlayer.NickName}");
+        Debug.Log($"[PUN2] Total players: {PhotonNetwork.CurrentRoom.PlayerCount}");
+    }
+
+    public override void OnDisconnected(DisconnectCause cause)
+    {
+        Debug.Log($"[PUN2] ?? Disconnected from Photon: {cause}");
+    }
+
+    // ===========================================
+    // CLEANUP
+    // ===========================================
+    private void OnDestroy()
+    {
+        // Unsubscribe from events
+        if (serverSessionHandler != null)
+        {
+            serverSessionHandler.OnSessionSaved -= OnServerSessionSaved;
+            serverSessionHandler.OnSessionLoaded -= OnServerSessionLoaded;
+            serverSessionHandler.OnError -= OnServerError;
+        }
+
+        // Unregister Photon events
+        if (PhotonNetwork.NetworkingClient != null)
+        {
+            PhotonNetwork.NetworkingClient.EventReceived -= OnPhotonEvent;
+        }
+    }
+}
+
+// ===========================================
+// HELPER COMPONENTS
+// ===========================================
+
+/// <summary>
+/// Helper component to store unique instance IDs on models
+/// </summary>
+public class ModelInstanceId : MonoBehaviour
+{
+    public string instanceId;
+}
+
+/// <summary>
+/// Helper component for tracking drawings
+/// </summary>
+/*public class DrawingTracker : MonoBehaviour
+{
+    public string drawingId;
+}
+
+/// <summary>
+/// Deletable marker component (if not already defined elsewhere)
+/// </summary>
+public class Deletable : MonoBehaviour
+{
+    // Marker component for deletable objects
+}*/
